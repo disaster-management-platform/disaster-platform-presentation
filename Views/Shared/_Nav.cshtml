@@ -2,7 +2,6 @@
     var path = Context.Request.Path.Value ?? "/";
     bool On(string p) => p == "/" ? path == "/" : path.StartsWith(p, StringComparison.OrdinalIgnoreCase);
 
-    // Eden se consume a través del integration-service/api-gateway, por lo que no es necesario que el front-end sepa de qué desastre se trata. Sin embargo, para mostrarlo en la barra de navegación, se obtiene el parámetro de query "disasterId" de la URL.
     var items = new (string Text, string Href, string Prefix)[]
     {
         ("Inicio", "/", "/"),
@@ -34,8 +33,11 @@
                 {
                     <span class="badge text-bg-info">Desastre @disasterId</span>
                 }
-                <span>Usuario de ejemplo · Defensa Civil</span>
-                <a class="btn btn-sm btn-outline-light" href="/Cuenta/Acceder">Salir</a>
+                <span>@(User.Identity?.Name ?? "Sin sesión")@(User.FindFirst("organization")?.Value is { } org ? " · " + org : "")</span>
+                <form method="post" action="/Cuenta/Salir" class="m-0">
+                    @Html.AntiForgeryToken()
+                    <button class="btn btn-sm btn-outline-light" type="submit">Salir</button>
+                </form>
             </div>
         </div>
     </div>

@@ -1,4 +1,4 @@
-@model ScreenModel
+@model PantallaVm
 @{
     var s = Model.Screen;
 }
@@ -43,5 +43,5 @@
 }
 @if (s.Cols.Length > 0)
 {
-    @await Html.PartialAsync("_Table", new TableVm(s.TableTitle, s.Cols, s.RowTo, s.Filters))
+    @await Html.PartialAsync("_Table", new TableVm(s.TableTitle, s.Cols, s.RowTo, s.Filters) { Rows = Model.Filas })
 }

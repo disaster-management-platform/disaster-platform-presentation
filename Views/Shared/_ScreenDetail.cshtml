@@ -1,4 +1,4 @@
-@model ScreenModel
+@model PantallaVm
 @{
     var s = Model.Screen;
 }
@@ -9,7 +9,7 @@
             <dl class="row p-3 mb-0">
                 @foreach (var c in s.Cols)
                 {
-                    var v = Mock.Cell(c, 0);
+                    var v = Model.Detalle?.GetValueOrDefault(c.Key) ?? Mock.Cell(c, 0);
                     <dt class="col-sm-4 text-muted">@c.Label</dt>
                     <dd class="col-sm-8">
                         @if (c.Type == CT.Badge) { <span class="@Mock.Badge(v)">@v</span> } else { @v }

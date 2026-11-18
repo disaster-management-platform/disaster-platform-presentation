@@ -1,11 +1,12 @@
-@model ScreenModel
+@model PantallaVm
 @foreach (var d in Model.Screen.Dialogs)
 {
     <div class="modal fade" id="dlg-@d.Id" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form method="post" action="@(Context.Request.Path.Value)?handler=Action&amp;dialog=@d.Id" novalidate>
+                <form method="post" action="@(Context.Request.Path.Value!.TrimEnd('/'))/Accion/@d.Id" novalidate>
                     @Html.AntiForgeryToken()
+                    <input type="hidden" name="Key" value="@Guid.NewGuid()" />
                     <div class="modal-header">
                         <h2 class="modal-title h5">@d.Title</h2>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>

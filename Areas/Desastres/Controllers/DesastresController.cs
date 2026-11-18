@@ -1,44 +1,45 @@
+using disaster_platform_web.Areas.Desastres.Clients;
+using disaster_platform_web.Controllers;
+using Microsoft.AspNetCore.Mvc;
+
+namespace disaster_platform_web.Areas.Desastres.Controllers;
+
 [Area("Desastres")]
-public class DesastresController(IDesastresClient api) : Controller
+public class DesastresController(IDesastresClient api) : PantallaController(api)
 {
     [HttpGet("Desastres")]
-    public async Task<IActionResult> Index(CancellationToken ct) => View(await api.ListarAsync(ct));
+    public Task<IActionResult> Dis01() => Ver("DIS-01", null);
 
     [HttpGet("Desastres/Lista")]
-    public async Task<IActionResult> Lista(CancellationToken ct)
-    {
-        var s = Catalog.Match("/Desastres/Lista")!.Value.Item1;   // columnas y filtros de DIS-02
-        var rows = (await api.ListarAsync(ct)).Select(d => new Row($"/Desastres/{d.Id}",
-            s.Cols.Select(c => (Valor(d, c), c.Type == CT.Badge)).ToArray()));
-        return View(new DesastreListaVm(new TableVm(s.TableTitle, s.Cols, s.RowTo, s.Filters) { Rows = rows }));
-    }
-
-    static string Valor(DesastreDto d, Col c) => c.Key.ToLowerInvariant() switch
-    {
-        "nombre" => d.Nombre,
-        "ubicacion" or "ubicación" => d.Ubicacion,
-        "severidad" => d.Severidad.ToString(),
-        "phase" or "fase" => d.Phase,
-        _ => ""
-    };
+    public Task<IActionResult> Dis02() => Ver("DIS-02", null);
 
     [HttpGet("Desastres/{id:int}")]
-    public async Task<IActionResult> Detalle(int id, CancellationToken ct) =>
-        await api.ObtenerAsync(id, ct) is { } d ? View(d) : NotFound();
+    public Task<IActionResult> Dis03(string id) => Ver("DIS-03", id);
+
+    [HttpPost("Desastres/{id:int}/Accion/{dialog}"), ValidateAntiForgeryToken]
+    public Task<IActionResult> Dis03Accion(string id, string dialog, [Bind(Prefix = "Values")] Dictionary<string, string?> values) => Accion("DIS-03", id, dialog, values);
 
     [HttpGet("Desastres/Crear")]
-    public IActionResult Crear() => View(new DesastreInput());
+    public Task<IActionResult> Dis04() => Ver("DIS-04", null);
 
     [HttpPost("Desastres/Crear"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> Crear(DesastreInput i, CancellationToken ct)
-    {
-        if (!ModelState.IsValid) return View(i);
-        try { var d = await api.CrearAsync(i, ct); return Redirect($"/Desastres/{d.Id}"); }
-        catch (HttpRequestException e) when ((int?)e.StatusCode is 409 or 422)
-        {
-            ModelState.AddModelError("", e.StatusCode == HttpStatusCode.Conflict
-                ? "El registro cambió, recarga y revisa." : "La operación no cumple una regla de negocio.");
-            return View(i);
-        }
-    }
+    public Task<IActionResult> Dis04Guardar([Bind(Prefix = "Values")] Dictionary<string, string?> values) => Guardar("DIS-04", null, values);
+
+    [HttpGet("Desastres/{id:int}/Fuentes")]
+    public Task<IActionResult> Dis05(string id) => Ver("DIS-05", id);
+
+    [HttpPost("Desastres/{id:int}/Fuentes/Accion/{dialog}"), ValidateAntiForgeryToken]
+    public Task<IActionResult> Dis05Accion(string id, string dialog, [Bind(Prefix = "Values")] Dictionary<string, string?> values) => Accion("DIS-05", id, dialog, values);
+
+    [HttpGet("Desastres/{id:int}/Organismos")]
+    public Task<IActionResult> Dis06(string id) => Ver("DIS-06", id);
+
+    [HttpPost("Desastres/{id:int}/Organismos/Accion/{dialog}"), ValidateAntiForgeryToken]
+    public Task<IActionResult> Dis06Accion(string id, string dialog, [Bind(Prefix = "Values")] Dictionary<string, string?> values) => Accion("DIS-06", id, dialog, values);
+
+    [HttpGet("Desastres/{id:int}/Alertas")]
+    public Task<IActionResult> Dis07(string id) => Ver("DIS-07", id);
+
+    [HttpPost("Desastres/{id:int}/Alertas/Accion/{dialog}"), ValidateAntiForgeryToken]
+    public Task<IActionResult> Dis07Accion(string id, string dialog, [Bind(Prefix = "Values")] Dictionary<string, string?> values) => Accion("DIS-07", id, dialog, values);
 }

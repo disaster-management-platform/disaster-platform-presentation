@@ -1,12 +1,4 @@
-public interface IIntegrationClient
-{
-    Task<IReadOnlyList<T>> ListarAsync<T>(string recurso, int? disasterId, CancellationToken ct = default);
-}
-public class IntegrationClient(HttpClient http) : IIntegrationClient
-{
-    public async Task<IReadOnlyList<T>> ListarAsync<T>(string recurso, int? disasterId, CancellationToken ct)
-    {
-        var url = $"api/eden/{recurso}" + (disasterId is { } d ? $"?disasterId={d}" : "");
-        return await http.GetFromJsonAsync<List<T>>(url, ct) ?? [];
-    }
-}
+namespace disaster_platform_web.Clients;
+
+// Marca para los clientes que hablan con el Integration Service (Eden vive detrás de él, el front nunca llama a Eden).
+public interface IIntegrationClient : IPantallaClient { }
