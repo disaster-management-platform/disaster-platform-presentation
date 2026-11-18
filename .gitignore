@@ -1,2 +1,11 @@
 dotnet-sdk.tar.gz
 dotnet-sdk.tar.gz
+bin/
+obj/
+.vs/
+.vscode/
+*.user
+*.suo
+dotnet-sdk*.tar.gz
+dotnet-install.sh
+appsettings.Local.json
