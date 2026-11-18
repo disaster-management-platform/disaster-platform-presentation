@@ -1,0 +1,8 @@
+body { background: #f6f7f9; }
+.map { height: 340px; }
+tr.clickable { cursor: pointer; }
+.card { border-color: #e3e6ea; }
+@media print {
+    .no-print, nav, .modal { display: none !important; }
+    body { background: #fff; }
+}

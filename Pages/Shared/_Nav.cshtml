@@ -1,0 +1,46 @@
+@{
+    var path = Context.Request.Path.Value ?? "/";
+    bool On(string p) => p == "/" ? path == "/" : path.StartsWith(p, StringComparison.OrdinalIgnoreCase);
+
+    // Barra de navegación del documento (sección 10). Las entradas Eden abren el sistema nativo.
+    var items = new (string Text, string Href, string Prefix, bool Ext)[]
+    {
+        ("Inicio", "/", "/", false),
+        ("Desastres", "/Desastres", "/Desastres", false),
+        ("Daños", "/Danos", "/Danos", false),
+        ("Personas afectadas", "/Personas", "/Personas", false),
+        ("Necesidades y atención", Catalog.Url("eden:/dvr/case_activity"), "", true),
+        ("Refugios", Catalog.Url("eden:/cr/shelter"), "", true),
+        ("Recursos y asignaciones", Catalog.Url("eden:/inv/inv_item"), "", true),
+        ("Organizaciones", "/Organizaciones", "/Organizaciones", false),
+        ("Reconstrucción", "/Reconstruccion", "/Reconstruccion", false),
+    };
+    var disasterId = Context.Request.Query["disasterId"].ToString();
+}
+<nav class="navbar navbar-expand-xl navbar-dark bg-dark no-print">
+    <div class="container-xl">
+        <a class="navbar-brand" href="/">Gestión de Desastres</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-label="Menú">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNav">
+            <ul class="navbar-nav me-auto">
+                @foreach (var it in items)
+                {
+                    <li class="nav-item">
+                        <a class="@("nav-link" + (!it.Ext && On(it.Prefix) ? " active" : ""))" href="@it.Href"
+                           target="@(it.Ext ? "_blank" : null)" rel="@(it.Ext ? "noopener" : null)">@it.Text@(it.Ext ? " ↗" : "")</a>
+                    </li>
+                }
+            </ul>
+            <div class="d-flex align-items-center gap-3 text-light small">
+                @if (disasterId != "")
+                {
+                    <span class="badge text-bg-info">Desastre @disasterId</span>
+                }
+                <span>Usuario de ejemplo · Defensa Civil</span>
+                <a class="btn btn-sm btn-outline-light" href="/Cuenta/Acceder">Salir</a>
+            </div>
+        </div>
+    </div>
+</nav>

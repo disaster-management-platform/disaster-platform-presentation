@@ -1,0 +1,48 @@
+@model FieldVm
+@{
+    var f = Model.F;
+    var id = Model.Prefix + f.Name;
+    var name = $"Values[{f.Name}]";
+    var v = Model.Value ?? "";
+    var cls = "form-control" + (Model.Error is null ? "" : " is-invalid");
+    var type = f.Type switch
+    {
+        FT.Email => "email", FT.Phone => "tel", FT.Number => "number", FT.Date => "date",
+        FT.DateTime => "datetime-local", FT.File => "file", _ => "text"
+    };
+}
+<div class="mb-3">
+    @if (f.Type == FT.Bool)
+    {
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="@id" name="@name" value="true" checked="@(v == "true")" />
+            <label class="form-check-label" for="@id">@f.Label</label>
+        </div>
+    }
+    else
+    {
+        <label class="form-label" for="@id">@f.Label @if (f.Required) { <span class="text-danger">*</span> }</label>
+        @switch (f.Type)
+        {
+            case FT.TextArea:
+                <textarea class="@cls" id="@id" name="@name" rows="3">@v</textarea>
+                break;
+            case FT.Select:
+                <select class="@(cls.Replace("form-control", "form-select"))" id="@id" name="@name">
+                    <option value="">Seleccione…</option>
+                    @foreach (var o in f.Options ?? Array.Empty<string>())
+                    {
+                        <option value="@o" selected="@(o == v)">@o</option>
+                    }
+                </select>
+                break;
+            default:
+                <input type="@type" class="@cls" id="@id" name="@name" value="@(f.Type == FT.File ? null : v)"
+                       step="@(f.Type == FT.Number ? "any" : null)" multiple="@(f.Type == FT.File)"
+                       maxlength="@(f.Max > 0 ? f.Max.ToString() : null)" />
+                break;
+        }
+    }
+    @if (f.Hint is not null) { <div class="form-text">@f.Hint</div> }
+    @if (Model.Error is not null) { <div class="invalid-feedback d-block">@Model.Error</div> }
+</div>
