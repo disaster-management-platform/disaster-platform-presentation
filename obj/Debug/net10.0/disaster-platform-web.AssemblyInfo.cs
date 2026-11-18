@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("disaster-platform-web")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+59b89c47572e594559f7fd1074dddee498db7173")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a76ac5a2be8b3e23b9dd9e9f7243142b628ad113")]
 [assembly: System.Reflection.AssemblyProductAttribute("disaster-platform-web")]
 [assembly: System.Reflection.AssemblyTitleAttribute("disaster-platform-web")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -43,6 +43,13 @@ public static class Catalog
         return null;
     }
 
+    public static Screen? ParentOf(string path)
+    {
+        var segs = path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segs.Length == 0) return null;
+        return Match(string.Join('/', segs[..^1]))?.Screen;
+    }
+
     public static bool IsExternal(string to) => to.StartsWith("eden:");
     public static string Url(string to, string? current = null) => Build(to, current, 0);
     public static string RowUrl(string to, int i) => Build(to, null, i);
@@ -274,7 +281,6 @@ public static class Catalog
                         C("status", "Estado", CT.Badge, "Consolidado|Pendiente|Duplicado")],
                 Dialogs = [D("asociar", "Asociar reporte", "Asociar reporte", F("source", "Origen", req: true), F("reference", "Referencia", req: true),
                                 F("description", "Descripción", FT.TextArea, req: true))],
-                Links = [L("Volver al desastre", "DIS-03")],
             },
             M("DIS-06", DIS, "Organismos participantes", "Desastres/{id:int}/Organismos", Kind.List, 'E',
               "E GET/POST /api/desastres/{id}/organizaciones; PUT .../{associationId}") with
@@ -284,7 +290,6 @@ public static class Catalog
                         C("statusId", "Estado", CT.Badge, "Activo|En espera|Activo")],
                 Dialogs = [D("asociar", "Asociar organismo", "Asociar organismo", F("organizationId", "Organismo", FT.Select, req: true, o: orgs),
                                 F("responsibility", "Responsabilidad", req: true), F("statusId", "Estado", FT.Select, o: "Activo|En espera"))],
-                Links = [L("Volver al desastre", "DIS-03")],
             },
             M("DIS-07", DIS, "Alertas y actividad", "Desastres/{id:int}/Alertas", Kind.List, 'E',
               "N GET /api/desastres/{id}/historial; E GET/POST /api/coordinacion/alertas?disasterId={id}") with
@@ -295,7 +300,6 @@ public static class Catalog
                             C("actor", "Actor", s: "j.pardo|m.torres"), C("before", "Antes", s: "Registered|3"), C("after", "Después", s: "Response|4"))],
                 Dialogs = [D("nueva", "Nueva alerta", "Nueva alerta", F("subject", "Asunto", req: true), F("message", "Mensaje", FT.TextArea, req: true),
                                 F("recipientIds", "Destinatarios", req: true, hint: "Separados por coma"))],
-                Links = [L("Volver al desastre", "DIS-03")],
             },
 
             // ===== 4. Evaluación de daños =====

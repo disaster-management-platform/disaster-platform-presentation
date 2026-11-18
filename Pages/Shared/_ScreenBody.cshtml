@@ -8,6 +8,10 @@
 }
 else
 {
+    if (Model.Parent is { } parent)
+    {
+        <a class="btn btn-sm btn-outline-secondary mb-2 no-print" href="@Catalog.Url(parent.Id, Model.RouteId)">← Volver a @parent.Title</a>
+    }
     <div class="d-flex flex-wrap justify-content-between align-items-start mb-3 gap-2">
         <div>
             <div class="text-muted small">

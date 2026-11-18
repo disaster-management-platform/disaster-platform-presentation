@@ -10,6 +10,7 @@ public class ScreenModel : PageModel
 {
     public Screen Screen { get; private set; } = default!;
     public string? RouteId { get; private set; }
+    public Screen? Parent { get; private set; }
 
     [BindProperty] public Dictionary<string, string?> Values { get; set; } = new();
     public Dictionary<string, string> Errors { get; } = new();
@@ -22,6 +23,7 @@ public class ScreenModel : PageModel
         var m = Catalog.Match(Request.Path.Value ?? "/");
         if (m is null) return false;
         (Screen, RouteId) = m.Value;
+        Parent = Catalog.ParentOf(Request.Path.Value ?? "/");
         return true;
     }
 
