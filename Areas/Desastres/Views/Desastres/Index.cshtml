@@ -1,0 +1,23 @@
+@model IReadOnlyList<DesastreDto>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">Dashboard de desastres</h1>
+  <div>
+    <a class="btn btn-outline-secondary btn-sm" href="/Desastres/Lista">Ver listado</a>
+    <a class="btn btn-primary btn-sm" href="/Desastres/Crear">Registrar desastre</a>
+  </div>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted small">Activos</div>
+    <div class="fs-3">@Model.Count(d => d.Phase != "Closed")</div></div></div></div>
+  <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted small">Críticos (severidad 4 o 5)</div>
+    <div class="fs-3">@Model.Count(d => d.Severidad >= 4)</div></div></div></div>
+</div>
+<div class="card"><div class="list-group list-group-flush">
+@foreach (var d in Model)
+{
+  <a class="list-group-item list-group-item-action d-flex justify-content-between" href="/Desastres/@d.Id">
+    <span>@d.Nombre <small class="text-muted">@d.Ubicacion</small></span>
+    <span class="badge text-bg-secondary">@d.Phase</span>
+  </a>
+}
+</div></div>

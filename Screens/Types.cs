@@ -54,6 +54,9 @@ public record Screen
 }
 
 // ViewModels de los parciales
-public record TableVm(string? Title, Col[] Cols, string? RowTo, Field[] Filters, bool Search = true);
+public record TableVm(string? Title, Col[] Cols, string? RowTo, Field[] Filters, bool Search = true)
+{
+    public IEnumerable<Row>? Rows { get; init; }
+}
 public record FieldVm(Field F, string? Value, string? Error, string Prefix);
 public record Row(string? Href, (string Text, bool Badge)[] Cells);

@@ -1,28 +1,24 @@
-using disaster_platform_web.Screens;
-
 var builder = WebApplication.CreateBuilder(args);
 
-Catalog.EdenBase = builder.Configuration["EdenBaseUrl"] ?? Catalog.EdenBase;
+builder.Services.AddControllersWithViews();
+builder.Services.AddRazorPages();
+builder.Services.AddHttpContextAccessor();
+builder.Services.Configure<ApiOptions>(builder.Configuration.GetSection("Api"));
+builder.Services.AddTransient<BearerHandler>();
 
-// Todas las pantallas del catálogo (menos HOME, que es "/") se atienden con la página Pages/Screen.cshtml
-builder.Services.AddRazorPages(options =>
-{
-    foreach (var s in Catalog.All.Where(s => s.Route.Length > 0))
-        options.Conventions.AddPageRoute("/Screen", s.Route);
-});
+if (builder.Configuration.GetValue<bool>("Api:UseMock"))
+    builder.Services.AddSingleton<IDesastresClient, FakeDesastresClient>();
+else
+    builder.Services.AddHttpClient<IDesastresClient, DesastresClient>((sp, c) =>
+        c.BaseAddress = new(sp.GetRequiredService<IOptions<ApiOptions>>().Value.GatewayUrl))
+        .AddHttpMessageHandler<BearerHandler>();
 
 var app = builder.Build();
 
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Error");
-    app.UseHsts();
-}
-
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment()) app.UseExceptionHandler("/Error");
 app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthorization();
+app.MapControllers();
 app.MapRazorPages();
-
 app.Run();

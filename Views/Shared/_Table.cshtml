@@ -27,7 +27,7 @@
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light"><tr>@foreach (var c in Model.Cols) { <th>@c.Label</th> }</tr></thead>
             <tbody>
-                @foreach (var row in Mock.Rows(Model.Cols, Model.RowTo))
+                @foreach (var row in (Model.Rows ?? Mock.Rows(Model.Cols, Model.RowTo)))
                 {
                     <tr data-href="@row.Href" class="@(row.Href is null ? null : "clickable")">
                         @foreach (var cell in row.Cells)
