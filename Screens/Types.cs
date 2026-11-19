@@ -32,6 +32,7 @@ public record Screen
     public string Title { get; init; } = "";
     public string Route { get; init; } = "";
     public Kind Kind { get; init; }
+    public int? Stage { get; init; }
     public string? Intro { get; init; }
     public Col[] Cols { get; init; } = [];
     public Field[] Fields { get; init; } = [];

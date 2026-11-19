@@ -11,6 +11,11 @@ else
 {
     <partial name="_PageHeader" model="Model" />
 
+    @if (s.Stage is { } stage)
+    {
+        <partial name="_FlujoReconstruccion" model="Model" />
+    }
+
     @if (hasActions)
     {
         <div class="d-flex flex-wrap gap-2 mb-4 no-print">

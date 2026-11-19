@@ -708,6 +708,7 @@ public static class Catalog
             M("REC-02", REC, "Propuestas de reconstrucción", "Reconstruccion/Propuestas", Kind.List, 'A',
               "GET /api/reconstruccion/propuestas?disasterId={id}; POST .../propuestas/generar {disasterId}") with
             {
+                Stage = 1,
                 RowTo = "REC-03",
                 Cols = [C("zone", "Zona", s: "Armenia|Calarcá|Cali|Manizales"), C("assetType", "Activo", s: "Puente|Escuela|Hospital|Vivienda"),
                         C("damage", "Daño", CT.Badge, "Destroyed|Severe|Severe|Moderate"), C("priority", "Prioridad", CT.Badge, "High|Low|Unassigned|High"),
@@ -718,6 +719,7 @@ public static class Catalog
             M("REC-03", REC, "Detalle de propuesta", "Reconstruccion/Propuestas/{id:guid}", Kind.Detail, 'A',
               "Localizar el id en GET /api/reconstruccion/propuestas (no hay GET individual); POST /api/reconstruccion/proyectos") with
             {
+                Stage = 1,
                 Cols = [C("zone", "Zona", s: "Calarcá"), C("assetType", "Activo", s: "Puente"), C("damage", "Daño", CT.Badge, "Destroyed"),
                         C("assessmentCount", "Evaluaciones", CT.Number), C("proposedBudget", "Presupuesto", CT.Money),
                         C("averageSeverity", "Severidad media", s: "4,2"), C("priority", "Prioridad", CT.Badge, "High"),
@@ -754,6 +756,7 @@ public static class Catalog
             M("REC-06", REC, "Formalización del proyecto", "Reconstruccion/Proyectos/{id:guid}/Formalizacion", Kind.Form, 'A',
               "GET /api/reconstruccion/financiacion?disasterId={id}; PUT P/formalizacion; POST P/confirmar-formalizacion") with
             {
+                Stage = 2,
                 SaveTo = "REC-05", CancelTo = "REC-05",
                 Fields =
                 [
@@ -766,6 +769,7 @@ public static class Catalog
             },
             M("REC-07", REC, "Contrato firmado", "Reconstruccion/Proyectos/{id:guid}/Contrato", Kind.Form, 'A', "POST P/contrato-firmado; GET P") with
             {
+                Stage = 2,
                 Intro = "Registra la referencia de un contrato ya firmado. No hay firma electrónica.",
                 SaveTo = "REC-05", CancelTo = "REC-05",
                 Fields = [F("contractReference", "Referencia del contrato", req: true, max: 1000),
@@ -774,6 +778,7 @@ public static class Catalog
             M("REC-08", REC, "Cronograma y actividades", "Reconstruccion/Proyectos/{id:guid}/Cronograma", Kind.List, 'A',
               "A GET P/monitoreo; E GET/POST P/actividades-operativas; PUT .../{activityId}") with
             {
+                Stage = 3,
                 TableTitle = "Actividades del cronograma",
                 Cols = projActCols,
                 Tables = [T("Actividades operativas", null, C("name", "Actividad", s: "Montaje de obra|Señalización"), C("statusId", "Estado", CT.Badge, estTarea),
@@ -783,6 +788,7 @@ public static class Catalog
             },
             M("REC-09", REC, "Gestión de tareas", "Reconstruccion/Proyectos/{id:guid}/Tareas", Kind.List, 'E', "E GET/POST P/tareas; PUT P/tareas/{taskId}") with
             {
+                Stage = 3,
                 Cols = taskCols,
                 Filters = [F("priorityId", "Prioridad", o: prios), F("statusId", "Estado", o: estTarea)],
                 Dialogs = [D("nueva", "Nueva tarea", "Nueva tarea", F("name", "Nombre", req: true), F("description", "Descripción", FT.TextArea),
@@ -792,6 +798,7 @@ public static class Catalog
             },
             M("REC-10", REC, "Participantes", "Reconstruccion/Proyectos/{id:guid}/Participantes", Kind.List, 'E', "E GET/POST P/participantes; PUT P/participantes/{participantId}") with
             {
+                Stage = 3,
                 RowTo = "ORG-02",
                 Cols = [C("name", "Nombre", s: "Constructora Andina|Cruz Roja|Ing. Rojas|Interventoría Sur"), C("kind", "Tipo", CT.Badge, "Organización|Organización|Persona|Organización"),
                         C("roleId", "Rol", s: "Contratista|Apoyo social|Líder técnico|Interventor"), C("statusId", "Estado", CT.Badge, "Activo|En espera")],
@@ -801,6 +808,7 @@ public static class Catalog
             },
             M("REC-11", REC, "Monitoreo financiero", "Reconstruccion/Proyectos/{id:guid}/Finanzas", Kind.Dashboard, 'A', "GET P/monitoreo; PUT P/presupuesto") with
             {
+                Stage = 3,
                 Stats = [S("Presupuesto", "$ 4.200 M"), S("Gasto", "$ 1.890 M"), S("Saldo", "$ 2.310 M")],
                 Chart = true, ChartTitle = "Gasto por actividad (millones COP)",
                 TableTitle = "Por actividad",
@@ -813,6 +821,7 @@ public static class Catalog
             M("REC-12", REC, "Reportes y evidencias", "Reconstruccion/Proyectos/{id:guid}/Reportes", Kind.Form, 'A',
               "POST P/adjuntos (multipart file/category); GET P/adjuntos/{attachmentId}; POST P/actividades/{activityId}/reportes") with
             {
+                Stage = 3,
                 SaveTo = "REC-12", CancelTo = "REC-05",
                 Fields = [F("activityId", "Actividad contractual", FT.Select, req: true, o: "Demolición|Cimentación|Estructura|Acabados|Entrega"),
                           F("status", "Estado reportado", FT.Select, req: true, o: "Pending|InProgress|Completed"),
@@ -824,6 +833,7 @@ public static class Catalog
             },
             M("REC-13", REC, "Cierre y reporte final", "Reconstruccion/Proyectos/{id:guid}/Cierre", Kind.Detail, 'A', "GET P/monitoreo; POST P/cerrar {expectedVersion}; GET P/reporte-final") with
             {
+                Stage = 4,
                 Print = true,
                 Intro = "Revisa el avance, los gastos y los documentos antes de cerrar el proyecto.",
                 Cols = [C("finalBudget", "Presupuesto final", CT.Money), C("totalExecuted", "Total ejecutado", CT.Money), C("remainingBudget", "Saldo", CT.Money),

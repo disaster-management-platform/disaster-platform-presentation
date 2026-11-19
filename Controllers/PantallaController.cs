@@ -28,6 +28,11 @@ public abstract class PantallaController(IPantallaClient api) : Controller
                 vm.FilasSub[i] = await api.FilasAsync(s, s.Tables[i].Cols, s.Tables[i].RowTo, id, i, ct) ?? [];
             if (s.Kind == Kind.Detail)
                 vm.Detalle = await api.DetalleAsync(s, id, ct);
+            if (s.Stage == 3 && id is not null)
+            {
+                var proyecto = await api.DetalleAsync(Catalog.Get("REC-05"), id, ct);
+                vm.ProjectStatus = proyecto?.GetValueOrDefault("status");
+            }
         }
         catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
         {   // degradación controlada: la pantalla se muestra vacía con el aviso
@@ -35,8 +40,24 @@ public abstract class PantallaController(IPantallaClient api) : Controller
             vm.Filas ??= [];
             for (var i = 0; i < s.Tables.Length; i++) vm.FilasSub.TryAdd(i, []);
         }
+        if (s.Id == "REC-05")
+        {
+            var status = vm.Detalle?.GetValueOrDefault("status") ?? "Monitoring";
+            vm.ProjectStatus = status;
+            vm.Screen = s with { Stage = Etapa(status) };
+        }
+        else if (s.Stage == 3 && api.Simulado && vm.ProjectStatus is null)
+            vm.ProjectStatus = "Monitoring";
         return View("Pantalla", vm);
     }
+
+    static int Etapa(string status) => status.ToLowerInvariant() switch
+    {
+        "draft" => 2,
+        "formalized" or "monitoring" => 3,
+        "closed" => 4,
+        _ => 3
+    };
 
     protected async Task<IActionResult> Guardar(string sid, string? id, Dictionary<string, string?> values)
     {

@@ -1,0 +1,38 @@
+@model PantallaVm
+@{
+    var steps = new[]
+    {
+        (Stage: 1, Title: "Definición de propuesta", ScreenId: "REC-02"),
+        (Stage: 2, Title: "Formalización", ScreenId: "REC-06"),
+        (Stage: 3, Title: "Monitoreo", ScreenId: "REC-08"),
+        (Stage: 4, Title: "Finalización y cierre", ScreenId: "REC-13"),
+    };
+    var currentStage = Model.Screen.Stage!.Value;
+    var hasProjectId = Model.RouteId is not null
+        && Guid.TryParse(Model.RouteId, out _)
+        && Model.Screen.Id != "REC-02"
+        && Model.Screen.Id != "REC-03";
+}
+<nav aria-label="Etapas de reconstrucción" class="mb-4 no-print">
+    <ol class="list-unstyled d-flex flex-wrap gap-3 mb-0">
+        @foreach (var step in steps)
+        {
+            var current = step.Stage == currentStage;
+            <li class="d-flex align-items-center gap-2 @(current ? "fw-semibold" : "text-muted")">
+                @if (hasProjectId)
+                {
+                    <a class="d-flex align-items-center gap-2 text-decoration-none @(current ? "fw-semibold" : "text-muted")"
+                       href="@Catalog.Url(step.ScreenId, Model.RouteId)">
+                        <span class="badge @(current ? "text-bg-primary" : "text-bg-light border")">@step.Stage</span>
+                        <span>@step.Title</span>
+                    </a>
+                }
+                else
+                {
+                    <span class="badge @(current ? "text-bg-primary" : "text-bg-light border")">@step.Stage</span>
+                    <span>@step.Title</span>
+                }
+            </li>
+        }
+    </ol>
+</nav>
