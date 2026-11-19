@@ -55,8 +55,26 @@ public abstract class PantallaController(IPantallaClient api) : Controller
         }
         else if (s.Stage == 3 && api.Simulado && vm.ProjectStatus is null)
             vm.ProjectStatus = "Monitoring";
+        if (s.Id == "REC-13")
+        {
+            var canFinalize = vm.Detalle?.GetValueOrDefault("canFinalize");
+            var sampleCanFinalize = Mock.Cell(s.Cols.Single(c => c.Key == "canFinalize"), 0);
+            vm.CanFinalize = ParseFlag(canFinalize) ?? (api.Simulado && ParseFlag(sampleCanFinalize) == true);
+            var missing = vm.Detalle?.GetValueOrDefault("activitiesWithoutReports");
+            if (int.TryParse(missing, out var missingCount))
+                vm.ActivitiesWithoutReports = missingCount;
+            else if (api.Simulado && int.TryParse(Mock.Cell(s.Cols.Single(c => c.Key == "activitiesWithoutReports"), 0), out missingCount))
+                vm.ActivitiesWithoutReports = missingCount;
+        }
         return View("Pantalla", vm);
     }
+
+    static bool? ParseFlag(string? value) => value?.Trim().ToLowerInvariant() switch
+    {
+        "true" or "1" or "yes" or "sí" or "si" => true,
+        "false" or "0" or "no" => false,
+        _ => null
+    };
 
     static int Etapa(string status) => status.ToLowerInvariant() switch
     {
@@ -172,6 +190,31 @@ public abstract class PantallaController(IPantallaClient api) : Controller
         if (d is null) return NotFound();
         if (sid == "REC-02" && dialog == "proyectos")
             return await CrearProyectos(s, id, values);
+        if (sid == "REC-13" && dialog == "cerrar")
+        {
+            if (!int.TryParse(values.GetValueOrDefault("expectedVersion"), out var expectedVersion) || expectedVersion <= 0)
+            {
+                TempData["Err"] = "No se pudo determinar la versión actual del proyecto.";
+                return Redirect(Catalog.Url(sid, id));
+            }
+            try
+            {
+                var detail = await api.DetalleAsync(s, id, HttpContext.RequestAborted);
+                var canFinalize = ParseFlag(detail?.GetValueOrDefault("canFinalize"));
+                if (canFinalize is null && api.Simulado)
+                    canFinalize = ParseFlag(Mock.Cell(s.Cols.Single(c => c.Key == "canFinalize"), 0));
+                if (canFinalize != true)
+                {
+                    TempData["Err"] = "No se puede cerrar el proyecto mientras existan actividades incompletas o reportes pendientes.";
+                    return Redirect(Catalog.Url(sid, id));
+                }
+            }
+            catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
+            {
+                TempData["Err"] = Mensaje(e);
+                return Redirect(Catalog.Url(sid, id));
+            }
+        }
         var errores = new Dictionary<string, string>();
         foreach (var f in d.Fields) Validar(errores, values, f);
         if (errores.Count > 0)

@@ -26,8 +26,9 @@ else
             @foreach (var d in s.Dialogs)
             {
                 var isBulkProjects = s.Id == "REC-02" && d.Id == "proyectos";
+                var isBlockedClose = s.Id == "REC-13" && d.Id == "cerrar" && !Model.CanFinalize;
                 <button type="button" class="btn btn-outline-primary px-3" data-bs-toggle="modal" data-bs-target="#dlg-@d.Id"
-                        disabled="@isBulkProjects" data-selection-launch="@(isBulkProjects ? "true" : null)">@d.Label</button>
+                        disabled="@(isBulkProjects || isBlockedClose)" data-selection-launch="@(isBulkProjects ? "true" : null)">@d.Label</button>
             }
             @if (s.Print) { <button type="button" class="btn btn-outline-dark px-3" onclick="window.print()">Imprimir</button> }
         </div>
@@ -41,6 +42,19 @@ else
         <div class="alert alert-warning" role="alert">
             El proyecto aún no está formalizado. Completa la formalización para iniciar el monitoreo.
             <a href="@Catalog.Url("REC-06", Model.RouteId)">Completar formalización</a>
+        </div>
+    }
+
+    @if (s.Id == "REC-13" && !Model.CanFinalize)
+    {
+        <div class="alert alert-warning" role="alert">
+            No se puede cerrar el proyecto mientras existan actividades incompletas o reportes pendientes.
+            @if (Model.ActivitiesWithoutReports is > 0)
+            {
+                <span>Hay @Model.ActivitiesWithoutReports actividades sin reporte.</span>
+            }
+            <a href="@Catalog.Url("REC-08", Model.RouteId)">Revisar cronograma</a> ·
+            <a href="@Catalog.Url("REC-12", Model.RouteId)">Registrar reportes</a>
         </div>
     }
 

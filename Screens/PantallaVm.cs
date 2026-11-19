@@ -7,6 +7,8 @@ public class PantallaVm
     public string? RouteId { get; set; }
     public Screen? Parent { get; set; }
     public string? ProjectStatus { get; set; }
+    public bool CanFinalize { get; set; }
+    public int? ActivitiesWithoutReports { get; set; }
     public Guid Key { get; set; } = Guid.NewGuid();   // Idempotency-Key del envío
 
     public Dictionary<string, string?> Values { get; set; } = new();

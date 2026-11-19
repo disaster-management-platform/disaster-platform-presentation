@@ -2,12 +2,19 @@
 @foreach (var d in Model.Screen.Dialogs)
 {
     var isBulkProjects = Model.Screen.Id == "REC-02" && d.Id == "proyectos";
+    var isBlockedClose = Model.Screen.Id == "REC-13" && d.Id == "cerrar" && !Model.CanFinalize;
     <div class="modal fade" id="dlg-@d.Id" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <form method="post" action="@(Context.Request.Path.Value!.TrimEnd('/'))/Accion/@d.Id" novalidate>
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="Key" value="@Guid.NewGuid()" />
+                    @if (Model.Screen.Id == "REC-13" && d.Id == "cerrar")
+                    {
+                        var version = Model.Detalle?.GetValueOrDefault("version")
+                            ?? Mock.Cell(Model.Screen.Cols.Single(c => c.Key == "version"), 0);
+                        <input type="hidden" name="Values[expectedVersion]" value="@version" />
+                    }
                     <div class="modal-header">
                         <h2 class="modal-title h5">@d.Title</h2>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
@@ -26,7 +33,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary" disabled="@isBulkProjects"
+                        <button type="submit" class="btn btn-primary" disabled="@(isBulkProjects || isBlockedClose)"
                                 data-selection-submit="@(isBulkProjects ? "true" : null)">Confirmar</button>
                     </div>
                 </form>
