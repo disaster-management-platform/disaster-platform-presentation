@@ -2,8 +2,8 @@ using System.Text.Json.Nodes;
 using disaster_platform_web.Clients;
 using disaster_platform_web.Screens;
 namespace disaster_platform_web.Areas.Desastres.Clients;
-public interface IDesastresClient : IPantallaClient { }
-public class FakeDesastresClient : FakePantallaClient, IDesastresClient { }
+public interface IDesastresClient : IPantallaClient { Task<System.Text.Json.Nodes.JsonNode?> SuggestionsAsync(int typeId,string location,DateTimeOffset startedAt,CancellationToken ct); }
+public class FakeDesastresClient : FakePantallaClient, IDesastresClient { public Task<System.Text.Json.Nodes.JsonNode?> SuggestionsAsync(int typeId,string location,DateTimeOffset startedAt,CancellationToken ct) => throw new NotSupportedException(); }
 public class DesastresClient(HttpClient http) : HttpPantallaClient(http), IDesastresClient
 {
     SelectOption[] types=[];
@@ -19,7 +19,10 @@ public class DesastresClient(HttpClient http) : HttpPantallaClient(http), IDesas
         if(vm.Screen.Id=="DIS-07")vm.Screen=vm.Screen with{Cols=[new("eventType","Evento durable"),new("occurredAt","Fecha"),new("version","Versión"),new("payload","Contenido")],Tables=[new("Historial",history,null)]};
         if(vm.Screen.Id=="DIS-05")vm.Screen=vm.Screen with{Cols=[new("id","Reporte"),new("sourceKind","Tipo de fuente"),new("sourceId","Fuente"),new("sourceReportId","Referencia de origen"),new("receivedAt","Recibido"),new("content","Contenido original")]};
         if(vm.Screen.Id=="DIS-06")vm.Screen=vm.Screen with{Cols=[new("organizationId","Organización (ID)"),new("responsibility","Responsabilidad")]};
-        if(vm.Screen.Id=="DIS-04") Fields(F("nombre","Nombre",required:true),Select("disasterTypeId","Tipo",types),F("startedAt","Inicio",FT.DateTime),Select("attentionLevel","Atención",[new("1","Bajo"),new("2","Medio"),new("3","Alto"),new("4","Crítico")]),F("severidad","Severidad (1–5)",FT.Number,true),F("ubicacion","Ubicación",required:true),F("latitud","Latitud",FT.Number,true),F("longitud","Longitud",FT.Number,true),F("radio","Radio (m)",FT.Number),F("descripcion","Descripción",FT.TextArea,true));
+        if(vm.Screen.Id=="DIS-04") {
+            vm.Values.TryAdd("startedAt",DateTimeOffset.UtcNow.ToString("O"));
+            Fields(F("nombre","Nombre",required:true),Select("disasterTypeId","Tipo",types,true),F("startedAt","Inicio",FT.DateTime,true),Select("attentionLevel","Atención",[new("1","Bajo"),new("2","Medio"),new("3","Alto"),new("4","Crítico")]),F("severidad","Severidad (1–5)",FT.Number,true),F("ubicacion","Municipio o ciudad",required:true),F("latitud","Latitud",FT.Number,true),F("longitud","Longitud",FT.Number,true),F("descripcion","Descripción",FT.TextArea,true));
+        }
         if(vm.Screen.Id is "DIS-03" or "DIS-08") {
             var dialogs=new List<Dialog>{new("fase","Cambiar fase","Cambiar fase",[Select("phase","Fase",Phases.Select(x=>new SelectOption(x,x)).ToArray(),true),F("reason","Justificación",FT.TextArea,true),F("confirmNoCriticalCommitments","Confirmo que no hay compromisos críticos pendientes",FT.Bool)]),new("sev","Actualizar información","Actualizar información",[F("nombre","Nombre",required:true),F("ubicacion","Ubicación",required:true),F("descripcion","Descripción",FT.TextArea,true),F("severidad","Severidad",FT.Number,true),Select("disasterTypeId","Tipo",types),F("startedAt","Inicio",FT.DateTime),Select("attentionLevel","Atención",[new("1","Bajo"),new("2","Medio"),new("3","Alto"),new("4","Crítico")]),F("latitud","Latitud",FT.Number,true),F("longitud","Longitud",FT.Number,true),F("radio","Radio (m)",FT.Number)]),new("geo","Actualizar geografía","Actualizar geografía",[F("polygon","GeoJSON Polygon/MultiPolygon",FT.TextArea),F("municipalities","Municipios (uno por línea)",FT.TextArea),F("neighborhoods","Barrios (uno por línea)",FT.TextArea),F("riskZones","Zonas de riesgo (una por línea)",FT.TextArea),F("sourceId","Fuente")])};
             vm.Screen=vm.Screen with{Dialogs=dialogs.ToArray()};
@@ -55,6 +58,8 @@ public class DesastresClient(HttpClient http) : HttpPantallaClient(http), IDesas
     }
     void Points(JsonNode[] list)=>View.PointsJson=System.Text.Json.JsonSerializer.Serialize(list.Select(x=>new{lat=x["latitud"],lng=x["longitud"],name=Text(x,"nombre"),sev=x["severidad"],radio=x["radio"],polygon=x["geography"]?["polygon"]}));
     protected override string Cell(JsonNode x,string key)=>key switch{"tipo"=>types.FirstOrDefault(t=>t.Value==Text(x,"disasterTypeId"))?.Label??"","inicio"=>Text(x,"startedAt"),"source"=>Text(x,"sourceId"),"reference"=>Text(x,"sourceReportId"),"description"=>Text(x,"content"),"name"=>Text(x,"organizationId"),"subject"=>Text(x,"eventType"),_=>base.Cell(x,key)};
+    public Task<JsonNode?> SuggestionsAsync(int typeId,string location,DateTimeOffset startedAt,CancellationToken ct) =>
+        Get("api/desastres/coincidencias?disasterTypeId="+typeId+"&ubicacion="+Uri.EscapeDataString(location)+"&startedAt="+Uri.EscapeDataString(startedAt.ToString("O")),ct);
     record DisasterInput(string Nombre,string Ubicacion,int Severidad,string Descripcion,double Latitud,double Longitud,double? Radio,int? DisasterTypeId,DateTimeOffset? StartedAt,int? AttentionLevel);
     record UpdateInput(string Nombre,string Ubicacion,int Severidad,string Descripcion,double Latitud,double Longitud,double? Radio,int? DisasterTypeId,DateTimeOffset? StartedAt,int? AttentionLevel,long ExpectedVersion);
     record PhaseInput(string Phase,long ExpectedVersion,string Reason,bool ConfirmNoCriticalCommitments);
@@ -67,7 +72,11 @@ public class DesastresClient(HttpClient http) : HttpPantallaClient(http), IDesas
     {
         var path="api/desastres/"+id;JsonNode? result;
         if(s.Id=="DIS-04") {
-            result=await Send(HttpMethod.Post,"api/desastres",new DisasterInput(Required(v,"nombre"),Required(v,"ubicacion"),Integer(v,"severidad")??throw new ContractException("Falta severidad"),Required(v,"descripcion"),Number(v,"latitud")??throw new ContractException("Falta latitud"),Number(v,"longitud")??throw new ContractException("Falta longitud"),Number(v,"radio"),Integer(v,"disasterTypeId"),Date(v,"startedAt"),Integer(v,"attentionLevel")),key,ct);
+            var report=new DisasterInput(Required(v,"nombre"),Required(v,"ubicacion"),Integer(v,"severidad")??throw new ContractException("Falta severidad"),Required(v,"descripcion"),Number(v,"latitud")??throw new ContractException("Falta latitud"),Number(v,"longitud")??throw new ContractException("Falta longitud"),Number(v,"radio"),Integer(v,"disasterTypeId"),Date(v,"startedAt"),Integer(v,"attentionLevel"));
+            if(Integer(v,"targetDisasterId") is int target) {
+                if(target<=0 || !long.TryParse(v.GetValueOrDefault("targetVersion"),out var version) || version<1)throw new ContractException("Recarga las sugerencias y elige un desastre vigente.");
+                result=await Send(HttpMethod.Post,$"api/desastres/{target}/reportes",new {report,expectedVersion=version},key,ct);
+            }else result=await Send(HttpMethod.Post,"api/desastres",report,key,ct);
         }else if(dialog=="fase")result=await Send(HttpMethod.Put,path+"/fase",new PhaseInput(Required(v,"phase"),Version(v),Required(v,"reason"),v.GetValueOrDefault("confirmNoCriticalCommitments")=="true"),key,ct);
         else if(dialog=="sev")result=await Send(HttpMethod.Put,path,new UpdateInput(Required(v,"nombre"),Required(v,"ubicacion"),Integer(v,"severidad")??0,Required(v,"descripcion"),Number(v,"latitud")??0,Number(v,"longitud")??0,Number(v,"radio"),Integer(v,"disasterTypeId"),Date(v,"startedAt"),Integer(v,"attentionLevel"),Version(v)),key,ct);
         else if(dialog=="geo") {

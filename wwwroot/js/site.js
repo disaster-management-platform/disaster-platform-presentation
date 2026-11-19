@@ -24,55 +24,109 @@ if (mapEl && window.L) {
 
 const registration = document.querySelector('[data-disaster-registration="true"]');
 if (registration) {
-    const latitude = registration.querySelector('[name="Values[latitud]"]');
-    const longitude = registration.querySelector('[name="Values[longitud]"]');
-    const location = registration.querySelector('[name="Values[ubicacion]"]');
+    const field = name => registration.querySelector(`[name="Values[${name}]"]`);
+    const latitude = field('latitud'), longitude = field('longitud'), location = field('ubicacion');
+    const type = field('disasterTypeId'), date = field('startedAt');
+    const selection = registration.querySelector('[data-disaster-match]');
+    const targetVersion = field('targetVersion');
+    const matchStatus = registration.querySelector('[data-match-status]');
     const locate = registration.querySelector('[data-locate]');
     const status = registration.querySelector('[data-location-status]');
     const save = registration.querySelector('button[type="submit"]');
-    let marker;
-    [latitude, longitude, location].forEach(field => field.readOnly = true);
+    let marker, locating = false, searching = false, unresolved = false, queryNumber = 0;
+    [latitude, longitude].forEach(input => input.readOnly = true);
     const valid = () => latitude.value.trim() !== '' && longitude.value.trim() !== '' &&
         Number.isFinite(Number(latitude.value)) && Math.abs(Number(latitude.value)) <= 90 &&
         Number.isFinite(Number(longitude.value)) && Math.abs(Number(longitude.value)) <= 180 && location.value.trim() !== '';
+    const ready = () => save.disabled = locating || searching || unresolved || !valid();
     const showPoint = () => {
-        if (!pageMap || !valid()) return;
+        if (!pageMap || latitude.value === '' || longitude.value === '') return;
         const point = [Number(latitude.value), Number(longitude.value)];
         if (marker) marker.setLatLng(point);
         else marker = L.marker(point).addTo(pageMap);
         pageMap.setView(point, 15);
     };
+    const suggestions = async () => {
+        const number = ++queryNumber;
+        if (!type.value || !date.value || !location.value.trim()) { searching = false; ready(); return; }
+        const instant = new Date(date.value);
+        if (!Number.isFinite(instant.getTime())) { searching = false; ready(); return; }
+        searching = true; ready();
+        matchStatus.textContent = 'Consultando coincidencias autorizadas…';
+        try {
+            const query = new URLSearchParams({ disasterTypeId: type.value, ubicacion: location.value, startedAt: instant.toISOString() });
+            const response = await fetch('/Desastres/Coincidencias?' + query, { credentials: 'same-origin', signal: AbortSignal.timeout(10000) });
+            if (!response.ok) throw new Error('Suggestions unavailable');
+            const candidates = await response.json();
+            if (!Array.isArray(candidates) || candidates.some(c => !Number.isInteger(c.id) || !Number.isSafeInteger(c.version) || c.version < 1)) throw new Error('Invalid suggestions');
+            if (number !== queryNumber) return;
+            const selected = selection.value || selection.dataset.selected || '';
+            selection.replaceChildren(new Option('Un desastre nuevo', ''));
+            candidates.forEach(candidate => {
+                const option = new Option(`${candidate.nombre} — ${candidate.ubicacion} — ${new Date(candidate.startedAt).toLocaleString('es-CO')}`, String(candidate.id));
+                option.dataset.version = String(candidate.version);
+                selection.append(option);
+            });
+            unresolved = selected !== '' && !candidates.some(c => String(c.id) === selected);
+            if (unresolved) selection.append(new Option('Asociación anterior no disponible: revisa antes de guardar', selected));
+            selection.value = selected;
+            targetVersion.value = selection.selectedOptions[0]?.dataset.version || targetVersion.value;
+            matchStatus.textContent = unresolved ? 'La asociación elegida ya no coincide o no está disponible. Revisa el registro.' : candidates.length ? 'Hay coincidencias del mismo tipo y municipio o ciudad dentro de ±72 horas. Elige una para asociar este reporte; no se asocia automáticamente.' : 'No se encontraron coincidencias autorizadas dentro de ±72 horas.';
+        } catch {
+            if (number !== queryNumber) return;
+            unresolved = Boolean(selection.value || selection.dataset.selected);
+            matchStatus.textContent = 'No se pudieron consultar coincidencias. Conserva los datos y vuelve a intentarlo antes de asociar.';
+        } finally {
+            if (number === queryNumber) { searching = false; ready(); }
+        }
+    };
+    selection.addEventListener('change', () => {
+        selection.dataset.selected = selection.value;
+        targetVersion.value = selection.selectedOptions[0]?.dataset.version || '';
+        unresolved = Boolean(selection.value && !targetVersion.value); ready();
+    });
+    [type, date, location].forEach(input => input.addEventListener('change', () => { ready(); suggestions(); }));
     const capture = () => {
         if (!window.isSecureContext || !navigator.geolocation) {
             status.textContent = 'La ubicación requiere HTTPS y un navegador con geolocalización.';
-            save.disabled = !valid();
-            return;
+            ready(); return;
         }
-        locate.disabled = true;
-        save.disabled = true;
+        locating = true; locate.disabled = true; ready();
         status.textContent = 'Obteniendo la ubicación del dispositivo…';
-        navigator.geolocation.getCurrentPosition(position => {
+        navigator.geolocation.getCurrentPosition(async position => {
             const { latitude: lat, longitude: lng, accuracy } = position.coords;
             if (!Number.isFinite(lat) || Math.abs(lat) > 90 || !Number.isFinite(lng) || Math.abs(lng) > 180) {
                 status.textContent = 'El dispositivo no devolvió coordenadas válidas. Vuelve a obtener la ubicación.';
             } else {
-                latitude.value = String(lat);
-                longitude.value = String(lng);
-                location.value = `Ubicación del dispositivo: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-                status.textContent = Number.isFinite(accuracy) ? `Ubicación obtenida. Precisión estimada: ${Math.round(accuracy)} m. Comprueba el punto en el mapa.` : 'Ubicación obtenida. Comprueba el punto en el mapa.';
-                showPoint();
+                latitude.value = String(lat); longitude.value = String(lng); location.value = ''; showPoint();
+                try {
+                    const url = new URL(registration.dataset.geocodingUrl);
+                    if (url.protocol !== 'https:') throw new Error('HTTPS required');
+                    url.search = new URLSearchParams({ latitude: String(lat), longitude: String(lng), localityLanguage: 'es' });
+                    const response = await fetch(url, { credentials: 'omit', signal: AbortSignal.timeout(8000) });
+                    if (!response.ok) throw new Error('Locality unavailable');
+                    const value = await response.json();
+                    const city = value.city || value.locality;
+                    if (typeof city !== 'string' || !city.trim() || city.length > 100 ||
+                        !Number.isFinite(value.latitude) || Math.abs(value.latitude - lat) > 0.000001 ||
+                        !Number.isFinite(value.longitude) || Math.abs(value.longitude - lng) > 0.000001 ||
+                        String(value.lookupSource || '').toLowerCase().includes('ip')) throw new Error('Invalid locality');
+                    location.value = [...new Set([city.trim(), typeof value.principalSubdivision === 'string' ? value.principalSubdivision.trim() : ''].filter(Boolean))].join(', ');
+                    if (location.value.length > 200) { location.value = ''; throw new Error('Invalid locality length'); }
+                    status.textContent = Number.isFinite(accuracy) ? `Ubicación obtenida. Precisión estimada: ${Math.round(accuracy)} m. Comprueba el punto y el municipio o ciudad.` : 'Ubicación obtenida. Comprueba el punto y el municipio o ciudad.';
+                } catch {
+                    status.textContent = 'GPS obtenido. No se pudo resolver el municipio o ciudad: escríbelo para continuar y comprueba el mapa.';
+                }
             }
-            locate.disabled = false;
-            save.disabled = !valid();
+            locating = false; locate.disabled = false; ready(); suggestions();
         }, error => {
             status.textContent = error.code === 1 ? 'Permite el acceso a la ubicación en el navegador y vuelve a intentarlo.' : 'No se pudo obtener la ubicación. Comprueba el GPS y vuelve a intentarlo.';
-            locate.disabled = false;
-            save.disabled = !valid();
+            locating = false; locate.disabled = false; ready();
         }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
     };
     locate.addEventListener('click', capture);
-    save.disabled = !valid();
-    if (valid()) showPoint();
+    ready();
+    if (valid()) { showPoint(); suggestions(); }
     else capture();
 }
 

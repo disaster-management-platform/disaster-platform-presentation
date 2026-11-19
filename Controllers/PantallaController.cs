@@ -13,6 +13,7 @@ public abstract class PantallaController(IPantallaClient api) : Controller
     protected async Task<IActionResult> Ver(string sid, string? id = null, PantallaVm? vm = null)
     {
         ViewData["EdenUrl"] = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Options.IOptions<ApiOptions>>().Value.EdenUrl;
+        ViewData["ReverseGeocodingUrl"] = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Options.IOptions<ApiOptions>>().Value.ReverseGeocodingUrl;
         var s = Catalog.Get(sid);
         vm ??= new PantallaVm();
         vm.Screen = s;

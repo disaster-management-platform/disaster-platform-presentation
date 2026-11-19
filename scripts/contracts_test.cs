@@ -17,6 +17,7 @@ using disaster_platform_web.Clients;
 using disaster_platform_web.Screens;
 using disaster_platform_web.Areas.Danos.Clients;
 using disaster_platform_web.Areas.Organizaciones.Clients;
+using disaster_platform_web.Areas.Desastres.Clients;
 
 static void Check(bool condition, string message)
 {
@@ -58,6 +59,36 @@ await organizations.PrepararAsync(vm, new Dictionary<string,string?>(), Cancella
 var rows = await organizations.FilasAsync(vm.Screen, [new("id", "ID"), new("name", "Name")], null, null, -1, CancellationToken.None);
 Check(rows?.Count == 1 && rows[0].Cells[1].Text == "Scoped organization", "Organization envelope not mapped");
 Console.WriteLine("PASS organization directory independence and real-envelope projection unit contract");
+
+var manualHandler = new ManualReportHandler();
+using var manualHttp = new HttpClient(manualHandler) { BaseAddress = new Uri("http://gateway.test/") };
+var disasters = new DesastresClient(manualHttp);
+var operation = Guid.NewGuid();
+var reportValues = new Dictionary<string,string?> {
+    ["nombre"]="Reporte",["ubicacion"]="Neiva, Huila",["severidad"]="3",["descripcion"]="Datos originales",
+    ["latitud"]="2.927301234",["longitud"]="-75.281901234",["disasterTypeId"]="2",
+    ["startedAt"]="2026-11-19T12:00:00Z",["targetDisasterId"]="4",["targetVersion"]="3"
+};
+Check(await disasters.EnviarAsync(Catalog.Get("DIS-04"),null,reportValues,operation,null,CancellationToken.None)=="4","Associated disaster ID missing");
+Check(manualHandler.Path=="/api/desastres/4/reportes" && manualHandler.Key==operation.ToString(),"Association route or UUID changed");
+var sent = JsonNode.Parse(manualHandler.Body)!;
+Check(sent["expectedVersion"]!.GetValue<long>()==3 && sent["report"]!["latitud"]!.GetValue<double>()==2.927301234,"Version or numeric GPS lost");
+Check(sent["report"]!["radio"]==null,"Unknown radius was replaced");
+await disasters.SuggestionsAsync(2,"Neiva, Huila",DateTimeOffset.Parse("2026-11-19T12:00:00Z"),CancellationToken.None);
+Check(manualHandler.Path=="/api/desastres/coincidencias" && manualHandler.Query.Contains("ubicacion=Neiva%2C%20Huila"),"Suggestion query lost location");
+Console.WriteLine("PASS typed manual association, returned ID, version, stable UUID, GPS and suggestion query");
+
+sealed class ManualReportHandler : HttpMessageHandler
+{
+    public string Path="",Query="",Key="",Body="";
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken ct)
+    {
+        Path=request.RequestUri!.AbsolutePath;Query=request.RequestUri.Query;
+        Key=request.Headers.TryGetValues("Idempotency-Key",out var values)?values.Single():"";
+        if(request.Content!=null)Body=await request.Content.ReadAsStringAsync(ct);
+        return new(HttpStatusCode.OK) { Content=new StringContent(request.Method==HttpMethod.Get?"[]":"{\"id\":4}",Encoding.UTF8,"application/json") };
+    }
+}
 
 sealed class CaptureHandler : HttpMessageHandler
 {

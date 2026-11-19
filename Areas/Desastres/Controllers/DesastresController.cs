@@ -19,6 +19,14 @@ public class DesastresController(IDesastresClient api) : PantallaController(api)
     [HttpPost("Desastres/{id:int}/Accion/{dialog}"), ValidateAntiForgeryToken]
     public Task<IActionResult> Dis03Accion(string id, string dialog, [Bind(Prefix = "Values")] Dictionary<string, string?> values) => Accion("DIS-03", id, dialog, values);
 
+    [HttpGet("Desastres/Coincidencias")]
+    public async Task<IActionResult> Coincidencias(int disasterTypeId,string ubicacion,DateTimeOffset startedAt)
+    {
+        if(!ModelState.IsValid || disasterTypeId<=0 || string.IsNullOrWhiteSpace(ubicacion) || ubicacion.Length>200 || startedAt==default)return BadRequest();
+        try { return Json(await api.SuggestionsAsync(disasterTypeId,ubicacion,startedAt,HttpContext.RequestAborted)); }
+        catch(HttpRequestException e) { return StatusCode((int)(e.StatusCode??System.Net.HttpStatusCode.BadGateway)); }
+    }
+
     [HttpGet("Desastres/Crear")]
     public Task<IActionResult> Dis04() => Ver("DIS-04", null);
 
