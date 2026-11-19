@@ -1,0 +1,11 @@
+@model DesastreInput
+<form asp-action="Crear" method="post">
+  <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+  <input type="hidden" asp-for="Key" />
+  <div class="mb-3"><label asp-for="Nombre" class="form-label"></label>
+    <input asp-for="Nombre" class="form-control" /><span asp-validation-for="Nombre" class="text-danger"></span></div>
+  @* repetir para Ubicacion, Descripcion, Severidad, Latitud, Longitud, Radio *@
+  <button class="btn btn-primary">Guardar</button>
+  <a class="btn btn-outline-secondary" href="/Desastres/Lista">Cancelar</a>
+</form>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

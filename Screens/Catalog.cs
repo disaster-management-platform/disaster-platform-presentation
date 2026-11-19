@@ -4,8 +4,6 @@ namespace disaster_platform_web.Screens;
 
 public static class Catalog
 {
-    public static string EdenBase { get; set; } = "https://eden.example.org";
-
     static readonly Regex ParamRx = new(@"^\{id(?::(\w+))?\}$");
     public static readonly IReadOnlyList<Screen> All = Build();
     static readonly Dictionary<string, Screen> ById = All.ToDictionary(s => s.Id);
@@ -50,7 +48,7 @@ public static class Catalog
         return Match(string.Join('/', segs[..^1]))?.Screen;
     }
 
-    public static bool IsExternal(string to) => to.StartsWith("eden:");
+    public static Screen Get(string id) => ById[id];
     public static string Url(string to, string? current = null) => Build(to, current, 0);
     public static string RowUrl(string to, int i) => Build(to, null, i);
 
@@ -70,7 +68,6 @@ public static class Catalog
 
     static string Build(string to, string? current, int i)
     {
-        if (IsExternal(to)) return EdenBase.TrimEnd('/') + to[5..];
         var s = ById[to];
         var segs = new List<string>();
         var hasParam = false;
@@ -199,7 +196,7 @@ public static class Catalog
                 TableTitle = "Alertas recientes",
                 Cols = alertCols,
                 Links = [L("Desastres", "DIS-01"), L("Daños", "DAM-01"), L("Personas", "PEO-01"),
-                         L("Organizaciones", "ORG-01"), L("Reconstrucción", "REC-01"), L("Eden nativo", "eden:/")],
+                         L("Organizaciones", "ORG-01"), L("Reconstrucción", "REC-01")],
             },
 
             // ===== 3. Gestión de desastres =====
@@ -385,7 +382,7 @@ public static class Catalog
                 Stats = [S("Personas", "1.240"), S("Familias", "312"), S("Expedientes abiertos", "87"), S("Alojados", "540")],
                 Chart = true, ChartTitle = "Personas por zona",
                 Links = [L("Registrar persona", "PEO-03", true), L("Directorio", "PEO-02"), L("Detalle de ejemplo", "PEO-04"),
-                         L("Expedientes (Eden DVR)", "eden:/dvr/person"), L("Refugios (Eden CR)", "eden:/cr/shelter"), L("Familias", "PEO-05")],
+                         L("Familias", "PEO-05")],
             },
             M("PEO-02", PEO, "Directorio de personas", "Personas/Lista", Kind.List, 'E', "E GET /api/personas-afectadas?disasterId={id}&search=...") with
             {
@@ -407,7 +404,6 @@ public static class Catalog
                     F("birthDate", "Fecha de nacimiento", FT.Date, noFuture: true), F("phone", "Teléfono", FT.Phone), F("email", "Correo", FT.Email),
                     F("locationId", "Ubicación"), F("organizationId", "Organización", FT.Select, o: orgs), F("disasterId", "Desastre", FT.Select, o: desastres),
                 ],
-                Links = [L("Abrir expediente en Eden", "eden:/dvr/person")],
             },
             M("PEO-04", PEO, "Detalle de persona", "Personas/{id}", Kind.Detail, 'E', "E GET/PUT /api/personas-afectadas/{id}") with
             {
@@ -418,7 +414,7 @@ public static class Catalog
                 Tables = [T("Expedientes", null, C("caseId", "Caso", s: "DVR-001|DVR-014"), C("status", "Estado", CT.Badge, "Abierto|Cerrado"), C("prioridad", "Prioridad", s: "Alta|Media")),
                           T("Necesidades y atención", null, C("tipo", "Necesidad", s: "Alimentos|Medicamentos|Alojamiento"), C("estado", "Atención", CT.Badge, "Pendiente|Completada|En curso"), C("fecha", "Fecha", CT.Date))],
                 Dialogs = [D("editar", "Editar", "Editar persona", F("firstName", "Nombres", req: true), F("lastName", "Apellidos"), F("phone", "Teléfono", FT.Phone), F("email", "Correo", FT.Email))],
-                Links = [L("Abrir en Eden DVR", "eden:/dvr/person"), L("Refugio en Eden", "eden:/cr/shelter"), L("Familia", "PEO-06")],
+                Links = [L("Familia", "PEO-06")],
             },
             M("PEO-05", PEO, "Gestión de familias", "Personas/Familias", Kind.List, 'E', "E GET/POST /api/familias; POST /api/familias/{id}/integrantes") with
             {
@@ -570,7 +566,7 @@ public static class Catalog
             {
                 TableTitle = "Actividades contractuales (.NET)",
                 Cols = projActCols,
-                Tables = [T("Actividades operativas (Eden)", null, C("name", "Actividad", s: "Montaje de obra|Señalización"), C("statusId", "Estado", CT.Badge, estTarea),
+                Tables = [T("Actividades operativas", null, C("name", "Actividad", s: "Montaje de obra|Señalización"), C("statusId", "Estado", CT.Badge, estTarea),
                             C("startsAt", "Inicio", CT.Date), C("endsAt", "Fin", CT.Date), C("contactPersonId", "Contacto", s: "A. Vargas"))],
                 Dialogs = [D("nueva", "Nueva actividad operativa", "Nueva actividad operativa", activityDlg)],
                 Links = [L("Tareas", "REC-09"), L("Reportes", "REC-12"), L("Proyecto", "REC-05")],

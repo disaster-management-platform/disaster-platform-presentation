@@ -1,0 +1,24 @@
+using disaster_platform_web.Screens;
+
+namespace disaster_platform_web.Clients;
+
+// Contrato común de los clientes por área. Cada área tiene su interfaz, su Fake y su HttpClient.
+public interface IPantallaClient
+{
+    bool Simulado { get; }
+    Task<IReadOnlyList<Row>?> FilasAsync(Screen s, Col[] cols, string? rowTo, string? id, int sub, CancellationToken ct);
+    Task<IReadOnlyDictionary<string, string>?> DetalleAsync(Screen s, string? id, CancellationToken ct);
+    Task EnviarAsync(Screen s, string? dialog, IDictionary<string, string?> valores, Guid key, string? id, CancellationToken ct);
+}
+
+// Datos de ejemplo mientras no exista el backend (Api:UseMock = true).
+public class FakePantallaClient : IPantallaClient
+{
+    public bool Simulado => true;
+    public Task<IReadOnlyList<Row>?> FilasAsync(Screen s, Col[] cols, string? rowTo, string? id, int sub, CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<Row>?>(Mock.Rows(cols, rowTo).ToList());
+    public Task<IReadOnlyDictionary<string, string>?> DetalleAsync(Screen s, string? id, CancellationToken ct) =>
+        Task.FromResult<IReadOnlyDictionary<string, string>?>(null);
+    public Task EnviarAsync(Screen s, string? dialog, IDictionary<string, string?> valores, Guid key, string? id, CancellationToken ct) =>
+        Task.CompletedTask;
+}

@@ -1,0 +1,6 @@
+@model PantallaVm
+@{
+    ViewData["Title"] = Model.Screen.Title;
+    ViewData["Bare"] = Model.Screen.Kind == Kind.Auth;
+}
+<partial name="_ScreenBody" model="Model" />

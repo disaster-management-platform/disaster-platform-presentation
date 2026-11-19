@@ -1,0 +1,30 @@
+@model PantallaVm
+@{
+    var s = Model.Screen;
+}
+<div class="row g-3 mb-4">
+    <div class="@(s.Map ? "col-lg-7" : "col-12")">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Ficha</div>
+            <dl class="row p-3 mb-0">
+                @foreach (var c in s.Cols)
+                {
+                    var v = Model.Detalle?.GetValueOrDefault(c.Key) ?? Mock.Cell(c, 0);
+                    <dt class="col-sm-4 text-muted">@c.Label</dt>
+                    <dd class="col-sm-8">
+                        @if (c.Type == CT.Badge) { <span class="@Mock.Badge(v)">@v</span> } else { @v }
+                    </dd>
+                }
+            </dl>
+        </div>
+    </div>
+    @if (s.Map)
+    {
+        <div class="col-lg-5">
+            <div class="card h-100">
+                <div class="card-header fw-semibold">Ubicación</div>
+                <div id="map" class="map" data-points="@Mock.PointsJson(true)"></div>
+            </div>
+        </div>
+    }
+</div>

@@ -7,4 +7,14 @@
     <RootNamespace>disaster_platform_web</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Using Include="Microsoft.AspNetCore.Mvc" />
+    <Using Include="System.Net" />
+    <Using Include="Microsoft.AspNetCore.Authentication" />
+    <Using Include="Microsoft.Extensions.Options" />
+    <Using Include="disaster_platform_web.Screens" />
+    <Using Include="disaster_platform_web.Clients" />
+    <Using Include="disaster_platform_web.Areas.Desastres.Models" />
+    <Using Include="disaster_platform_web.Areas.Desastres.Clients" />
+  </ItemGroup>
 </Project>

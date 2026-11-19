@@ -1,0 +1,47 @@
+@model PantallaVm
+@{
+    var s = Model.Screen;
+}
+@if (s.Stats.Length > 0)
+{
+    <div class="row g-3 mb-4">
+        @foreach (var st in s.Stats)
+        {
+            <div class="col-6 col-lg">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">@st.Label</div>
+                        <div class="fs-2 fw-semibold">@st.Value</div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+@if (s.Map)
+{
+    <div class="card mb-4">
+        <div class="card-header fw-semibold">Mapa</div>
+        <div id="map" class="map" data-points="@Mock.PointsJson(false)"></div>
+    </div>
+}
+@if (s.Chart)
+{
+    var max = Mock.Bars.Max(b => b.Count);
+    <div class="card mb-4">
+        <div class="card-header fw-semibold">@(s.ChartTitle ?? "Resumen")</div>
+        <div class="card-body">
+            @foreach (var b in Mock.Bars)
+            {
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between small"><span>@b.Zone</span><span>@b.Count</span></div>
+                    <div class="progress" role="progressbar"><div class="progress-bar" style="width:@(b.Count * 100 / max)%"></div></div>
+                </div>
+            }
+        </div>
+    </div>
+}
+@if (s.Cols.Length > 0)
+{
+    @await Html.PartialAsync("_Table", new TableVm(s.TableTitle, s.Cols, s.RowTo, s.Filters) { Rows = Model.Filas })
+}
