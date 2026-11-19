@@ -30,6 +30,10 @@ def login(user=None):
         response = submit(response, {})
     assert response.status_code == 200 and response.url.startswith(base + '/')
     assert any(cookie.name.startswith('platform-session') and cookie.secure for cookie in session.cookies)
+    assert urlsplit(response.url).path == '/Desastres'
+    navigation = BeautifulSoup(response.text, 'html.parser').select_one('nav')
+    assert navigation is not None and user['username'] in navigation.get_text()
+    assert not any(link.get_text(strip=True) == 'Inicio' for link in navigation.select('a'))
     return session
 
 

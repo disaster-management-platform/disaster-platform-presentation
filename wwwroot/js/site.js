@@ -1,8 +1,9 @@
 ﻿// Mapa Leaflet (dashboards y detalle de desastre)
+let pageMap;
 const mapEl = document.getElementById('map');
 if (mapEl && window.L) {
     const pts = JSON.parse(mapEl.dataset.points || '[]');
-    const map = L.map(mapEl).setView([4.6, -75.6], 7);
+    const map = pageMap = L.map(mapEl).setView([4.6, -75.6], 7);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 18, attribution: '&copy; OpenStreetMap'
     }).addTo(map);
@@ -19,6 +20,60 @@ if (mapEl && window.L) {
     });
     if (bounds.length > 1) map.fitBounds(bounds, { padding: [30, 30] });
     else if (bounds.length === 1) map.setView(bounds[0], 10);
+}
+
+const registration = document.querySelector('[data-disaster-registration="true"]');
+if (registration) {
+    const latitude = registration.querySelector('[name="Values[latitud]"]');
+    const longitude = registration.querySelector('[name="Values[longitud]"]');
+    const location = registration.querySelector('[name="Values[ubicacion]"]');
+    const locate = registration.querySelector('[data-locate]');
+    const status = registration.querySelector('[data-location-status]');
+    const save = registration.querySelector('button[type="submit"]');
+    let marker;
+    [latitude, longitude, location].forEach(field => field.readOnly = true);
+    const valid = () => latitude.value.trim() !== '' && longitude.value.trim() !== '' &&
+        Number.isFinite(Number(latitude.value)) && Math.abs(Number(latitude.value)) <= 90 &&
+        Number.isFinite(Number(longitude.value)) && Math.abs(Number(longitude.value)) <= 180 && location.value.trim() !== '';
+    const showPoint = () => {
+        if (!pageMap || !valid()) return;
+        const point = [Number(latitude.value), Number(longitude.value)];
+        if (marker) marker.setLatLng(point);
+        else marker = L.marker(point).addTo(pageMap);
+        pageMap.setView(point, 15);
+    };
+    const capture = () => {
+        if (!window.isSecureContext || !navigator.geolocation) {
+            status.textContent = 'La ubicación requiere HTTPS y un navegador con geolocalización.';
+            save.disabled = !valid();
+            return;
+        }
+        locate.disabled = true;
+        save.disabled = true;
+        status.textContent = 'Obteniendo la ubicación del dispositivo…';
+        navigator.geolocation.getCurrentPosition(position => {
+            const { latitude: lat, longitude: lng, accuracy } = position.coords;
+            if (!Number.isFinite(lat) || Math.abs(lat) > 90 || !Number.isFinite(lng) || Math.abs(lng) > 180) {
+                status.textContent = 'El dispositivo no devolvió coordenadas válidas. Vuelve a obtener la ubicación.';
+            } else {
+                latitude.value = String(lat);
+                longitude.value = String(lng);
+                location.value = `Ubicación del dispositivo: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                status.textContent = Number.isFinite(accuracy) ? `Ubicación obtenida. Precisión estimada: ${Math.round(accuracy)} m. Comprueba el punto en el mapa.` : 'Ubicación obtenida. Comprueba el punto en el mapa.';
+                showPoint();
+            }
+            locate.disabled = false;
+            save.disabled = !valid();
+        }, error => {
+            status.textContent = error.code === 1 ? 'Permite el acceso a la ubicación en el navegador y vuelve a intentarlo.' : 'No se pudo obtener la ubicación. Comprueba el GPS y vuelve a intentarlo.';
+            locate.disabled = false;
+            save.disabled = !valid();
+        }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+    };
+    locate.addEventListener('click', capture);
+    save.disabled = !valid();
+    if (valid()) showPoint();
+    else capture();
 }
 
 document.querySelectorAll('[data-interactive-chart]').forEach(root => {

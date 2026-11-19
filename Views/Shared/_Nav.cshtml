@@ -4,7 +4,6 @@
 
     var items = new (string Text, string Href, string Prefix)[]
     {
-        ("Inicio", "/", "/"),
         ("Desastres", "/Desastres", "/Desastres"),
         ("Daños", "/Danos", "/Danos"),
         ("Personas afectadas", "/Personas", "/Personas"),
@@ -46,7 +45,7 @@
                 {
                     <span class="badge text-bg-secondary">Desastre @disasterId</span>
                 }
-                <span>@(User.Identity?.Name ?? "Sin sesión")@(User.FindFirst("organization")?.Value is { } org ? " · " + org : "")</span>
+                <span>@(User.FindFirst("preferred_username")?.Value ?? User.FindFirst("name")?.Value ?? "Usuario autenticado")@(User.FindFirst("organization_id")?.Value is { } org ? " · " + org : "")</span>
                 <form method="post" action="/Cuenta/Salir" class="m-0">
                     @Html.AntiForgeryToken()
                     <button class="btn btn-sm btn-outline-light" type="submit">Salir</button>

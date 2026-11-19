@@ -57,7 +57,7 @@ if (!mock)
         foreach (var scope in new[] { "disasters-api", "reconstruction-api", "damage-assessment-api", "integration-service" })
             options.Scope.Add(scope);
         options.MapInboundClaims = false;
-        options.TokenValidationParameters.NameClaimType = "sub";
+        options.TokenValidationParameters.NameClaimType = "preferred_username";
         options.TokenValidationParameters.RoleClaimType = "role";
         options.Events.OnTicketReceived = context =>
         {

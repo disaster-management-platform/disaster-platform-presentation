@@ -1,9 +1,8 @@
-using disaster_platform_web.Clients;
 using Microsoft.AspNetCore.Mvc;
 
 namespace disaster_platform_web.Controllers;
 
-public class HomeController(IPantallaClient api) : PantallaController(api)
+public class HomeController : Controller
 {
-    [HttpGet("/")] public Task<IActionResult> Index() => Ver("HOME");
+    [HttpGet("/")] public IActionResult Index() => Redirect("/Desastres");
 }

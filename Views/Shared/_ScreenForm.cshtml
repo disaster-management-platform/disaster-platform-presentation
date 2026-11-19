@@ -4,13 +4,22 @@
     var multipart = s.Fields.Any(f => f.Type == FT.File);
     var activities = Model.Values.GetValueOrDefault("activities") ?? "";
 }
-<form method="post" enctype="@(multipart ? "multipart/form-data" : "application/x-www-form-urlencoded")" novalidate class="card card-body mb-4">
+<form method="post" enctype="@(multipart ? "multipart/form-data" : "application/x-www-form-urlencoded")" novalidate class="card card-body mb-4" data-disaster-registration="@(s.Id == "DIS-04" ? "true" : null)">
     @Html.AntiForgeryToken()
     <input type="hidden" name="Key" value="@Model.Key" />
     <input type="hidden" name="Values[expectedVersion]" value="@Model.Values.GetValueOrDefault("expectedVersion")" />
     @if (Model.Errors.Count > 0)
     {
         <div class="alert alert-danger">Revisa los campos marcados.</div>
+    }
+    @if (s.Id == "DIS-04")
+    {
+        <div class="mb-3">
+            <p class="mb-2">Registra desde el lugar del desastre. Autoriza la ubicación para completar las coordenadas y comprobar el punto en el mapa.</p>
+            <button type="button" class="btn btn-outline-primary" data-locate>Obtener ubicación actual</button>
+            <p class="form-text" role="status" aria-live="polite" data-location-status></p>
+            <div id="map" class="map" data-points="[]" aria-label="Lugar de registro del desastre"></div>
+        </div>
     }
     <div class="row">
         @foreach (var f in s.Fields.Where(f => s.Id != "REC-06" || f.Name != "activities"))
