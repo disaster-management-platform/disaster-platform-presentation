@@ -397,7 +397,7 @@ public static class Catalog
                 Stats = [S("Personas", "1.240"), S("Familias", "312"), S("Expedientes abiertos", "87"), S("Alojados", "540")],
                 Chart = true, ChartTitle = "Personas por zona",
                 Links = [L("Registrar persona", "PEO-03", true), L("Directorio", "PEO-02"), L("Detalle de ejemplo", "PEO-04"),
-                         L("Familias", "PEO-05")],
+                         L("Familias", "PEO-05"), L("Refugios", "PEO-07"), L("Solicitudes de ayuda", "PEO-09")],
             },
             M("PEO-02", PEO, "Directorio de personas", "Personas/Lista", Kind.List, 'E', "E GET /api/personas-afectadas?disasterId={id}&search=...") with
             {
@@ -444,6 +444,62 @@ public static class Catalog
                 Cols = [C("name", "Familia", s: "Familia Gómez"), C("locationId", "Ubicación", s: "Armenia"), C("caseIds", "Casos", s: "DVR-001, DVR-014")],
                 Tables = [T("Miembros", "PEO-04", C("personId", "Persona", s: "María Gómez|Luis Gómez|Sara Gómez"), C("groupHead", "Jefe de grupo", CT.Badge, "Sí|No|No"))],
                 Dialogs = [D("asoc", "Editar asociación", "Editar asociación", F("personId", "Persona", req: true), F("groupHead", "Jefe de grupo", FT.Bool))],
+            },
+            M("PEO-07", PEO, "Refugios", "Personas/Refugios", Kind.List, 'E', "E GET/POST /api/refugios?disasterId={id}") with
+            {
+                Intro = "Capacidad y ocupación de los refugios habilitados.",
+                Cols =
+                [
+                    C("nombre", "Refugio", s: "Coliseo Armenia|Colegio Normal Calarcá|Polideportivo Cali Sur|Coliseo Manizales"),
+                    C("ubicacion", "Ubicación", s: "Armenia|Calarcá|Cali|Manizales"), C("capacidad", "Capacidad", CT.Number),
+                    C("ocupacion", "Ocupación", CT.Number), C("responsable", "Responsable", s: "Cruz Roja|Defensa Civil|Autoridad local"),
+                    C("estado", "Estado", CT.Badge, "Abierto|Lleno|Cerrado"),
+                ],
+                Filters = [F("estado", "Estado", o: "Abierto|Lleno|Cerrado")],
+                Dialogs =
+                [
+                    D("crear", "Registrar refugio", "Registrar refugio", F("nombre", "Nombre", req: true),
+                      F("ubicacion", "Ubicación", req: true),
+                      F("capacidad", "Capacidad", FT.Number, req: true, min: 1),
+                      F("responsable", "Responsable", FT.Select, req: true, o: orgs),
+                      F("latitud", "Latitud", FT.Number, min: -90, hi: 90),
+                      F("longitud", "Longitud", FT.Number, min: -180, hi: 180)),
+                ],
+                Links = [L("Registrar solicitud de ayuda", "PEO-09", true), L("Directorio", "PEO-02")],
+            },
+            M("PEO-09", PEO, "Solicitudes de ayuda y atención", "Personas/Solicitudes", Kind.List, 'E',
+              "E GET/POST /api/personas-afectadas/solicitudes-ayuda; POST .../atenciones") with
+            {
+                Intro = "Información protegida. El acceso se controla por rol y organización.",
+                Cols =
+                [
+                    C("codigo", "Solicitud", s: "AYU-0201|AYU-0202|AYU-0203"),
+                    C("solicitante", "Persona o familia", s: "María Gómez|Familia Rojas|Carlos Díaz"),
+                    C("necesidad", "Necesidad", s: "Alimentos|Agua|Medicamentos|Alojamiento|Transporte|Atención psicosocial"),
+                    C("ubicacion", "Ubicación", s: "Armenia|Calarcá|Cali|Manizales"),
+                    C("prioridad", "Prioridad", CT.Badge, prios), C("organismo", "Organismo asignado", s: orgs),
+                    C("estado", "Estado", CT.Badge, "Pendiente|En atención|Atendida"), C("fecha", "Fecha", CT.Date),
+                ],
+                Filters =
+                [
+                    F("necesidad", "Necesidad", o: "Alimentos|Agua|Medicamentos|Alojamiento|Transporte|Atención psicosocial"),
+                    F("prioridad", "Prioridad", o: prios), F("estado", "Estado", o: "Pendiente|En atención|Atendida"),
+                ],
+                Dialogs =
+                [
+                    D("nueva", "Registrar solicitud de ayuda", "Registrar solicitud de ayuda",
+                      F("solicitante", "Persona o familia", req: true),
+                      F("necesidad", "Necesidad", FT.Select, req: true, o: "Alimentos|Agua|Medicamentos|Alojamiento|Transporte|Atención psicosocial"),
+                      F("prioridad", "Prioridad", FT.Select, req: true, o: prios),
+                      F("ubicacion", "Ubicación"),
+                      F("descripcion", "Descripción", FT.TextArea)),
+                    D("atencion", "Registrar atención", "Registrar atención",
+                      F("codigo", "Código de solicitud", req: true),
+                      F("tipo", "Tipo de atención", FT.Select, req: true, o: "Entrega de ayuda|Alojamiento|Atención médica|Acompañamiento"),
+                      F("organismo", "Organismo", FT.Select, req: true, o: orgs),
+                      F("fecha", "Fecha y hora", FT.DateTime),
+                      F("observaciones", "Observaciones", FT.TextArea)),
+                ],
             },
 
             // ===== 6. Coordinación de organizaciones =====
