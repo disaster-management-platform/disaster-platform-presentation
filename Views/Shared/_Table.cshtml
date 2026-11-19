@@ -27,7 +27,7 @@
             </div>
         </div>
     }
-    <div class="table-responsive">
+    <div class="table-responsive @(rows.Length > 6 ? "table-scroll" : null)">
         <table class="table table-hover align-middle mb-0" data-selectable="@(Model.Selectable ? "true" : null)">
             <thead class="table-light">
                 <tr>

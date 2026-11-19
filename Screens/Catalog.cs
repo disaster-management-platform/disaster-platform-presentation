@@ -525,7 +525,7 @@ public static class Catalog
                     S("Activos destruidos", "42"), S("Daño grave", "118"),
                     S("Costo estimado", "$ 18.400 millones"), S("Zonas críticas", "5"),
                 ],
-                Map = true, Chart = true, ChartTitle = "Costo estimado por zona (millones COP)",
+                Map = true, Chart = true, ChartTitle = "Activos afectados por zona",
                 TableTitle = "Zonas priorizadas",
                 Cols =
                 [

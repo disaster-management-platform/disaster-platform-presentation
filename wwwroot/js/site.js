@@ -17,6 +17,201 @@ if (mapEl && window.L) {
     else if (bounds.length === 1) map.setView(bounds[0], 10);
 }
 
+document.querySelectorAll('[data-interactive-chart]').forEach(root => {
+    const values = JSON.parse(root.dataset.chartValues || '[]');
+    const canvas = root.querySelector('[data-chart-canvas]');
+    const legend = root.querySelector('[data-chart-legend]');
+    const summary = root.querySelector('[data-chart-summary]');
+    const controls = root.closest('.card')?.querySelectorAll('button[data-chart-type]') || [];
+    const title = root.dataset.chartTitle || 'Gráfico';
+    const numberFormat = new Intl.NumberFormat('es-CO');
+    let chartType = root.dataset.chartType || 'bars';
+    let selectedIndex = null;
+
+    const svgElement = (name, attributes = {}) => {
+        const element = document.createElementNS('http://www.w3.org/2000/svg', name);
+        Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
+        return element;
+    };
+    const addText = (svg, text, x, y, className, anchor) => {
+        const element = svgElement('text', { x, y, class: className });
+        if (anchor) element.setAttribute('text-anchor', anchor);
+        element.textContent = text;
+        svg.append(element);
+        return element;
+    };
+    const addTitle = (element, text) => {
+        const tooltip = svgElement('title');
+        tooltip.textContent = text;
+        element.append(tooltip);
+    };
+    const shortLabel = (label, length) =>
+        label.length > length ? `${label.slice(0, length - 1)}…` : label;
+    const maxValue = Math.max(1, ...values.map(item => Math.max(0, item.value)));
+
+    const createSvg = (viewBox, type) => {
+        const svg = svgElement('svg', {
+            class: `chart-svg chart-svg--${type}`,
+            viewBox,
+            role: 'img',
+            'aria-label': title
+        });
+        const description = svgElement('title');
+        description.textContent = title;
+        svg.append(description);
+        return svg;
+    };
+
+    const renderBars = () => {
+        const rowHeight = 42;
+        const svg = createSvg(`0 0 900 ${Math.max(180, values.length * rowHeight + 20)}`, 'bars');
+        values.forEach((item, index) => {
+            const y = 10 + index * rowHeight;
+            const group = svgElement('g', { 'data-chart-mark': index });
+            addTitle(group, `${item.label}: ${numberFormat.format(item.value)}`);
+            addText(group, shortLabel(item.label, 25), 0, y + 23, 'chart-label');
+            group.append(svgElement('rect', {
+                x: 225, y: y + 5, width: Math.max(0, item.value) / maxValue * 590, height: 24,
+                rx: 2, class: `chart-color-${index % 10}`
+            }));
+            addText(group, numberFormat.format(item.value), 830, y + 23, 'chart-value');
+            svg.append(group);
+        });
+        return svg;
+    };
+
+    const renderColumns = () => {
+        const width = 900;
+        const top = 24;
+        const bottom = 265;
+        const left = 64;
+        const right = 885;
+        const plotHeight = bottom - top;
+        const slotWidth = (right - left) / Math.max(1, values.length);
+        const svg = createSvg(`0 0 ${width} 335`, 'columns');
+
+        for (let step = 0; step <= 4; step++) {
+            const fraction = step / 4;
+            const y = bottom - fraction * plotHeight;
+            svg.append(svgElement('line', {
+                x1: left, y1: y, x2: right, y2: y, class: 'chart-grid'
+            }));
+            addText(svg, numberFormat.format(Math.round(maxValue * fraction)), left - 8, y + 5, 'chart-label', 'end');
+        }
+
+        values.forEach((item, index) => {
+            const x = left + index * slotWidth + slotWidth / 2;
+            const barHeight = Math.max(0, item.value) / maxValue * plotHeight;
+            const group = svgElement('g', { 'data-chart-mark': index });
+            addTitle(group, `${item.label}: ${numberFormat.format(item.value)}`);
+            group.append(svgElement('rect', {
+                x: x - Math.min(54, slotWidth * 0.58) / 2,
+                y: bottom - barHeight,
+                width: Math.min(54, slotWidth * 0.58),
+                height: barHeight,
+                rx: 2,
+                class: `chart-color-${index % 10}`
+            }));
+            addText(group, numberFormat.format(item.value), x, Math.max(top + 14, bottom - barHeight - 8), 'chart-value', 'middle');
+            addText(group, shortLabel(item.label, 13), x, bottom + 26, 'chart-label', 'middle');
+            svg.append(group);
+        });
+        return svg;
+    };
+
+    const renderPie = () => {
+        const svg = createSvg('0 0 800 340', 'pie');
+        const centerX = 400;
+        const centerY = 165;
+        const radius = 130;
+        const total = values.reduce((sum, item) => sum + Math.max(0, item.value), 0);
+        let startAngle = -Math.PI / 2;
+
+        values.forEach((item, index) => {
+            const sweep = total > 0 ? Math.max(0, item.value) / total * Math.PI * 2 : 0;
+            const endAngle = startAngle + sweep;
+            const group = svgElement('g', { 'data-chart-mark': index });
+            const startX = centerX + radius * Math.cos(startAngle);
+            const startY = centerY + radius * Math.sin(startAngle);
+            const endX = centerX + radius * Math.cos(endAngle);
+            const endY = centerY + radius * Math.sin(endAngle);
+            const path = svgElement('path', {
+                d: sweep >= Math.PI * 2
+                    ? ''
+                    : `M ${centerX} ${centerY} L ${startX} ${startY} A ${radius} ${radius} 0 ${sweep > Math.PI ? 1 : 0} 1 ${endX} ${endY} Z`,
+                class: `chart-color-${index % 10}`,
+                stroke: '#fff',
+                'stroke-width': 2
+            });
+            addTitle(group, `${item.label}: ${numberFormat.format(item.value)}`);
+            if (sweep >= Math.PI * 2) {
+                group.append(svgElement('circle', {
+                    cx: centerX, cy: centerY, r: radius, class: `chart-color-${index % 10}`
+                }));
+            } else if (sweep > 0) {
+                group.append(path);
+            }
+            svg.append(group);
+            startAngle = endAngle;
+        });
+        return svg;
+    };
+
+    const updateSelection = () => {
+        canvas.querySelectorAll('[data-chart-mark]').forEach(mark => {
+            mark.setAttribute('opacity', selectedIndex === null || Number(mark.dataset.chartMark) === selectedIndex ? '1' : '0.28');
+        });
+        legend.querySelectorAll('[data-chart-index]').forEach(button => {
+            button.setAttribute('aria-pressed', Number(button.dataset.chartIndex) === selectedIndex ? 'true' : 'false');
+        });
+        summary.textContent = selectedIndex === null
+            ? 'Selecciona una categoría para resaltarla.'
+            : `${values[selectedIndex].label}: ${numberFormat.format(values[selectedIndex].value)}`;
+    };
+
+    const render = () => {
+        const svg = chartType === 'pie' ? renderPie() : chartType === 'columns' ? renderColumns() : renderBars();
+        canvas.replaceChildren(svg);
+        controls.forEach(button => {
+            const active = button.dataset.chartType === chartType;
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+            button.classList.toggle('btn-secondary', active);
+            button.classList.toggle('btn-outline-secondary', !active);
+        });
+        updateSelection();
+    };
+
+    values.forEach((item, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-sm btn-outline-secondary chart-legend__item';
+        button.dataset.chartIndex = index;
+        button.setAttribute('aria-pressed', 'false');
+        button.title = `${item.label}: ${numberFormat.format(item.value)}`;
+
+        const swatch = document.createElement('span');
+        swatch.className = `chart-legend__swatch chart-swatch--${index % 10}`;
+        swatch.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span');
+        label.textContent = item.label;
+        const value = document.createElement('span');
+        value.className = 'fw-semibold';
+        value.textContent = numberFormat.format(item.value);
+        button.append(swatch, label, value);
+        button.addEventListener('click', () => {
+            selectedIndex = selectedIndex === index ? null : index;
+            updateSelection();
+        });
+        legend.append(button);
+    });
+
+    controls.forEach(button => button.addEventListener('click', () => {
+        chartType = button.dataset.chartType;
+        render();
+    }));
+    render();
+});
+
 // Filas clicables
 document.querySelectorAll('tr[data-href]').forEach(tr =>
     tr.addEventListener('click', () => { location.href = tr.dataset.href; }));

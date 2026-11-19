@@ -20,29 +20,26 @@
 }
 @if (s.Map)
 {
-    <div class="card mb-4">
-        <div class="card-header fw-semibold">Mapa</div>
-        <div id="map" class="map" data-points="@Mock.PointsJson(false)"></div>
-    </div>
-}
-@if (s.Chart)
-{
-    var bars = Mock.BarsFor(s);
-    var max = bars.Max(b => b.Count);
-    <div class="card mb-4">
-        <div class="card-header fw-semibold">@(s.ChartTitle ?? "Resumen")</div>
-        <div class="card-body">
-            @foreach (var b in bars)
-            {
-                <div class="mb-2">
-                    <div class="d-flex justify-content-between small"><span>@b.Zone</span><span>@b.Count</span></div>
-                    <div class="progress" role="progressbar"><div class="progress-bar" style="width:@(b.Count * 100 / max)%"></div></div>
-                </div>
-            }
+    <div class="row g-3 mb-4 align-items-start">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header fw-semibold">Mapa</div>
+                <div id="map" class="map" data-points="@Mock.PointsJson(false)"></div>
+            </div>
         </div>
+        @if (s.Cols.Length > 0)
+        {
+            <div class="col-lg-6">
+                @await Html.PartialAsync("_Table", new TableVm(s.TableTitle, s.Cols, s.RowTo, s.Filters) { Rows = Model.Filas, Selectable = s.Selectable })
+            </div>
+        }
     </div>
 }
-@if (s.Cols.Length > 0)
+@if (s.Chart && !s.Map)
+{
+    <partial name="_ScreenChart" model="Model" />
+}
+@if (s.Cols.Length > 0 && !s.Map)
 {
     @await Html.PartialAsync("_Table", new TableVm(s.TableTitle, s.Cols, s.RowTo, s.Filters) { Rows = Model.Filas, Selectable = s.Selectable })
 }
