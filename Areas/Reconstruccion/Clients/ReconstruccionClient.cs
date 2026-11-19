@@ -19,7 +19,8 @@ public class ReconstruccionClient(HttpClient http) : HttpPantallaClient(http), I
         }
         if(vm.RouteId!=null&&vm.Screen.Id is not "REC-03") {
             project=await Get(Root+"proyectos/"+vm.RouteId,ct);vm.ProjectStatus=Text(project,"status");
-            foreach(var entry in project!.AsObject())vm.Values.TryAdd(entry.Key,entry.Value?.ToString());
+            foreach(var entry in project!.AsObject())
+                if (entry.Key != "activities" || vm.Screen.Id != "REC-06") vm.Values.TryAdd(entry.Key,entry.Value?.ToString());
             vm.Values.TryAdd("expectedVersion",Text(project,"version"));
         }
         if(vm.Screen.Id=="REC-13")vm.Screen=vm.Screen with{Cols=new[]{new Col("status","Estado"),new Col("closedAt","Cerrado")}.Concat(vm.Screen.Cols.Where(c=>c.Key!="releasedBudget")).ToArray()};
