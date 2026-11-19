@@ -12,10 +12,14 @@ public class CuentaController(disaster_platform_web.Clients.IPantallaClient api,
     public async Task<IActionResult> Acceder(string? returnUrl = null)
     {
         if (options.Value.UseMock) return await Ver("AUTH");
+        if (User.Identity?.IsAuthenticated == true) return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : "/Desastres");
         return Challenge(new AuthenticationProperties { RedirectUri = Url.IsLocalUrl(returnUrl) ? returnUrl : "/" }, OpenIdConnectDefaults.AuthenticationScheme);
     }
 
     [HttpPost("Cuenta/Salir"), ValidateAntiForgeryToken]
     public IActionResult Salir() => options.Value.UseMock ? Redirect("/Cuenta/Acceder") :
-        SignOut(new AuthenticationProperties { RedirectUri = "/" }, CookieAuthenticationDefaults.AuthenticationScheme, OpenIdConnectDefaults.AuthenticationScheme);
+        SignOut(new AuthenticationProperties { RedirectUri = "/Cuenta/Desconectado" }, CookieAuthenticationDefaults.AuthenticationScheme, OpenIdConnectDefaults.AuthenticationScheme);
+
+    [AllowAnonymous, HttpGet("Cuenta/Desconectado")]
+    public IActionResult Desconectado() => View("Acceder");
 }

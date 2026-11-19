@@ -12,6 +12,7 @@ using disaster_platform_web.Areas.Recursos.Clients;
 using disaster_platform_web.Areas.Sistema.Clients;
 using disaster_platform_web.Clients;
 using Microsoft.Extensions.Options;
+using disaster_platform_web.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,6 +46,9 @@ if (!mock)
     var keys = identity["DataProtectionPath"] ?? throw new InvalidOperationException("Configure a private shared Security:DataProtectionPath.");
     builder.Services.AddDataProtection().SetApplicationName("disaster-platform-presentation")
         .PersistKeysToFileSystem(new DirectoryInfo(keys));
+    builder.Services.AddSingleton<SharedTicketStore>();
+    builder.Services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
+        .Configure<SharedTicketStore>((options, store) => options.SessionStore = store);
     builder.Services.AddAuthentication().AddOpenIdConnect(options =>
     {
         options.Authority = authority.ToString().TrimEnd('/');
@@ -54,6 +58,10 @@ if (!mock)
         options.UsePkce = true;
         options.RequireHttpsMetadata = true;
         options.SaveTokens = true;
+        options.RemoteAuthenticationTimeout = TimeSpan.FromMinutes(5);
+        options.ProtocolValidator.NonceLifetime = options.RemoteAuthenticationTimeout;
+        options.CorrelationCookie.Path = options.CallbackPath;
+        options.NonceCookie.Path = options.CallbackPath;
         foreach (var scope in new[] { "disasters-api", "reconstruction-api", "damage-assessment-api", "integration-service" })
             options.Scope.Add(scope);
         options.MapInboundClaims = false;
@@ -64,8 +72,19 @@ if (!mock)
             var expiry = context.Properties?.GetTokenValue("expires_at");
             if (!DateTimeOffset.TryParse(expiry, CultureInfo.InvariantCulture, DateTimeStyles.None, out var expires) || expires <= DateTimeOffset.UtcNow)
                 context.Fail("Missing or expired access token.");
-            else context.Properties!.ExpiresUtc = expires;
+            else
+            {
+                context.Properties!.ExpiresUtc = expires;
+                context.Properties.StoreTokens(context.Properties.GetTokens().Where(token => token.Name != "refresh_token"));
+            }
             return Task.CompletedTask;
+        };
+        options.Events.OnRemoteFailure = async context =>
+        {
+            context.HandleResponse();
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            context.Response.ContentType = "text/plain; charset=utf-8";
+            await context.Response.WriteAsync("El inicio de sesión no pudo completarse o expiró. Vuelve a /Cuenta/Acceder para intentarlo nuevamente.");
         };
     });
     builder.Services.AddAuthorization(options => options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
@@ -106,6 +125,15 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+app.Use(async (context, next) =>
+{
+    var chunks = context.Request.Cookies.Keys.Where(name => name.StartsWith("platform-sessionC", StringComparison.Ordinal)
+        && int.TryParse(name["platform-sessionC".Length..], out _)).ToArray();
+    if (chunks.Length != 0)
+        foreach (var name in chunks.Append("platform-session"))
+            context.Response.Cookies.Delete(name, new CookieOptions { Path = "/", Secure = true, HttpOnly = true });
+    await next();
+});
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

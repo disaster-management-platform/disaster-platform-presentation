@@ -7,11 +7,11 @@ from urllib.parse import urljoin, urlsplit
 import requests
 from bs4 import BeautifulSoup
 
-def login(user=None):
+def login(user=None, session=None):
     base = os.environ['RAZOR_TEST_URL'].rstrip('/')
     assert urlsplit(base).scheme == 'https' and urlsplit(base).hostname == 'localhost'
     user = user or json.loads(Path(os.environ['RAZOR_TEST_IDENTITY']).read_text())
-    session = requests.Session()
+    session = session or requests.Session()
     session.verify = os.environ['RAZOR_TEST_CA']
 
 
