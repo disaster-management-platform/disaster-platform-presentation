@@ -36,6 +36,14 @@ else
     @if (Model.Flash is not null) { <div class="alert alert-success">@Model.Flash</div> }
     @if (Model.FlashError is not null) { <div class="alert alert-danger">@Model.FlashError</div> }
 
+    @if (s.Stage == 3 && string.Equals(Model.ProjectStatus, "Draft", StringComparison.OrdinalIgnoreCase))
+    {
+        <div class="alert alert-warning" role="alert">
+            El proyecto aún no está formalizado. Completa la formalización para iniciar el monitoreo.
+            <a href="@Catalog.Url("REC-06", Model.RouteId)">Completar formalización</a>
+        </div>
+    }
+
     @switch (s.Kind)
     {
         case Kind.Dashboard:

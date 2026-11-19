@@ -84,4 +84,10 @@ public class ReconstruccionController(IReconstruccionClient api) : PantallaContr
 
     [HttpPost("Reconstruccion/Proyectos/{id:guid}/Entidades/Accion/{dialog}"), ValidateAntiForgeryToken]
     public Task<IActionResult> Rec14Accion(string id, string dialog, [Bind(Prefix = "Values")] Dictionary<string, string?> values) => Accion("REC-14", id, dialog, values);
+
+    [HttpGet("Reconstruccion/Proyectos/{id:guid}/Seguimiento")]
+    public Task<IActionResult> Rec15(string id) => Ver("REC-15", id);
+
+    [HttpPost("Reconstruccion/Proyectos/{id:guid}/Seguimiento/Accion/{dialog}"), ValidateAntiForgeryToken]
+    public Task<IActionResult> Rec15Accion(string id, string dialog, [Bind(Prefix = "Values")] Dictionary<string, string?> values) => Accion("REC-15", id, dialog, values);
 }

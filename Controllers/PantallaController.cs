@@ -86,7 +86,17 @@ public abstract class PantallaController(IPantallaClient api) : Controller
     {
         var s = Catalog.Get(sid);
         var vm = new PantallaVm { Values = values, Key = Clave() };
-        foreach (var f in s.Fields) Validar(vm.Errors, values, f);
+        foreach (var f in s.Fields)
+        {
+            if (f.Type == FT.File)
+            {
+                if (f.Required && !Request.Form.Files.Any(file =>
+                    file.Name.Equals($"Values[{f.Name}]", StringComparison.OrdinalIgnoreCase) && file.Length > 0))
+                    vm.Errors[f.Name] = "es obligatorio.";
+            }
+            else
+                Validar(vm.Errors, values, f);
+        }
         if (sid == "REC-06") ValidarCronograma(values, vm.Errors);
         if (vm.Errors.Count > 0) return await Ver(sid, id, vm);
         try

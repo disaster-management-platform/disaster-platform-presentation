@@ -846,13 +846,16 @@ public static class Catalog
               "POST P/adjuntos (multipart file/category); GET P/adjuntos/{attachmentId}; POST P/actividades/{activityId}/reportes") with
             {
                 Stage = 3,
+                Intro = "Cada actividad se resuelve con un reporte que incluye evidencias, costos, documentación y estado.",
                 SaveTo = "REC-12", CancelTo = "REC-05",
                 Fields = [F("activityId", "Actividad contractual", FT.Select, req: true, o: "Demolición|Cimentación|Estructura|Acabados|Entrega"),
                           F("status", "Estado reportado", FT.Select, req: true, o: "Pending|InProgress|Completed"),
                           F("actualCost", "Costo incremental", FT.Number, req: true, min: 0),
-                          F("evidence", "Fotografías (PNG o JPEG, máx. 20 MiB)", FT.File), F("documents", "Documento de soporte (PDF, máx. 20 MiB)", FT.File)],
+                          F("evidence", "Fotografías (PNG o JPEG, máx. 20 MiB)", FT.File, req: true),
+                          F("documents", "Documento de soporte (PDF, máx. 20 MiB)", FT.File, req: true)],
                 Tables = [T("Reportes registrados", null, C("activity", "Actividad", s: "Demolición|Cimentación|Estructura"), C("status", "Estado", CT.Badge, "Completed|InProgress|Pending"),
                             C("actualCost", "Costo", CT.Money), C("actor", "Registró", s: "j.pardo|m.torres"), C("registeredAt", "Fecha", CT.Date),
+                            C("completo", "Completo", CT.Badge, "Sí|No|Sí"),
                             C("adjuntos", "Adjuntos", s: "foto-12.jpg, acta.pdf|foto-07.jpg"))],
             },
             M("REC-13", REC, "Cierre y reporte final", "Reconstruccion/Proyectos/{id:guid}/Cierre", Kind.Detail, 'A', "GET P/monitoreo; POST P/cerrar {expectedVersion}; GET P/reporte-final") with
@@ -868,6 +871,24 @@ public static class Catalog
                             C("status", "Estado", CT.Badge, "Completed"), C("reportes", "Reportes", CT.Number), C("evidencias", "Evidencias", CT.Number))],
                 Dialogs = [D("cerrar", "Cerrar proyecto", "Cerrar proyecto")],
                 Links = [L("Proyecto", "REC-05")],
+            },
+
+            M("REC-15", REC, "Seguimiento con la entidad", "Reconstruccion/Proyectos/{id:guid}/Seguimiento", Kind.Dashboard, 'N',
+              "N GET/POST P/solicitudes-seguimiento") with
+            {
+                Stage = 3,
+                Intro = "Solicita a la entidad evidencias, informe de costos, documentación y actualización de estado. El ciclo se repite hasta que complete sus tareas.",
+                Stats = [S("Actividades terminadas", "3 de 5"), S("Solicitudes abiertas", "2"), S("Avance", "60 %")],
+                TableTitle = "Solicitudes a la entidad",
+                Cols = [C("tipo", "Solicitud", s: "Evidencias|Informe de costos|Documentación|Actualización de estado"),
+                        C("activity", "Actividad", s: "Demolición|Cimentación|Estructura|Acabados|Entrega"),
+                        C("requestedAt", "Solicitada", CT.Date), C("status", "Estado", CT.Badge, "Pendiente|Recibida"),
+                        C("respondedAt", "Respuesta", CT.Date, "—|2026-11-18")],
+                Dialogs = [D("nueva", "Nueva solicitud", "Nueva solicitud",
+                    F("tipo", "Tipo de solicitud", FT.Select, req: true, o: "Evidencias|Informe de costos|Documentación|Actualización de estado"),
+                    F("activity", "Actividad", FT.Select, req: true, o: "Demolición|Cimentación|Estructura|Acabados|Entrega"),
+                    F("mensaje", "Mensaje", FT.TextArea))],
+                Links = [L("Reportes", "REC-12"), L("Cronograma", "REC-08"), L("Proyecto", "REC-05")],
             },
 
             M("REC-14", REC, "Entidades y presupuestos", "Reconstruccion/Proyectos/{id:guid}/Entidades", Kind.Dashboard, 'N',

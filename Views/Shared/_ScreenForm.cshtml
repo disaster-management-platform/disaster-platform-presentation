@@ -49,7 +49,7 @@
         }
     }
     <div class="d-flex gap-2">
-        <button class="btn btn-primary" type="submit">Guardar</button>
+        <button class="btn btn-primary" type="submit" disabled="@(s.Id == "REC-12" && string.Equals(Model.ProjectStatus, "Draft", StringComparison.OrdinalIgnoreCase))">Guardar</button>
         @if (s.CancelTo is not null)
         {
             <a class="btn btn-light" href="@Catalog.Url(s.CancelTo, Model.RouteId)">Cancelar</a>
