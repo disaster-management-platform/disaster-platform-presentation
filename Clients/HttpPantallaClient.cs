@@ -29,10 +29,22 @@ public abstract class HttpPantallaClient(HttpClient http) : IPantallaClient
         if (sub >= 0) return [];   // subtablas: se habilitan cuando el contrato publique su endpoint
         var ruta = Ruta(s, "GET", id);
         if (ruta is null) return [];
-        var items = await http.GetFromJsonAsync<List<Dictionary<string, JsonElement>>>(ruta, ct) ?? [];
+        using var response = await http.GetAsync(ruta, ct);
+        response.EnsureSuccessStatusCode();
+        using var document = await response.Content.ReadFromJsonAsync<JsonDocument>(ct)
+            ?? throw new HttpRequestException("Empty API response.");
+        var list = document.RootElement;
+        if (list.ValueKind == JsonValueKind.Object)
+        {
+            if (list.TryGetProperty("items", out var itemsPage)) list = itemsPage;
+            else if (list.TryGetProperty("evaluations", out var evaluations)) list = evaluations;
+        }
+        if (list.ValueKind != JsonValueKind.Array)
+            throw new HttpRequestException("Unsupported API list contract.");
+        var items = list.Deserialize<List<Dictionary<string, JsonElement>>>() ?? [];
         return items.Select(it =>
         {
-            var idKey = it.Keys.FirstOrDefault(key => key.Equals("id", StringComparison.OrdinalIgnoreCase));
+            var idKey = it.Keys.FirstOrDefault(key => key.Equals("id", StringComparison.OrdinalIgnoreCase) || key.Equals("evaluationId", StringComparison.OrdinalIgnoreCase));
             var recordId = idKey is null ? null : it[idKey].ToString();
             if (string.IsNullOrWhiteSpace(recordId)) recordId = null;
             var priority = s.Id == "REC-02" ? Texto(it, "priority") : null;

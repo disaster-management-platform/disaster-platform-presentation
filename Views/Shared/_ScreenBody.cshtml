@@ -82,7 +82,7 @@ else
             @await Html.PartialAsync("_Table", new TableVm(t.Title, t.Cols, t.RowTo, Array.Empty<Field>(), false) { Rows = Model.FilasSub.GetValueOrDefault(i) })
         }
     }
-    @if (s.Map)
+    @if (s.Map && Model.Simulado)
     {
         <partial name="_ScreenChart" model="Model" />
     }

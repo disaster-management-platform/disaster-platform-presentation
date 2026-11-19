@@ -15,6 +15,12 @@ public abstract class PantallaController(IPantallaClient api) : Controller
         var s = Catalog.Get(sid);
         vm ??= new PantallaVm();
         vm.Screen = s;
+        vm.Simulado = api.Simulado;
+        if (!api.Simulado)
+        {
+            vm.Filas ??= [];
+            for (var index = 0; index < s.Tables.Length; index++) vm.FilasSub.TryAdd(index, []);
+        }
         vm.RouteId = id;
         vm.Parent = Catalog.ParentOf(Request.Path.Value ?? "/");
         vm.Flash = TempData["Msg"] as string;

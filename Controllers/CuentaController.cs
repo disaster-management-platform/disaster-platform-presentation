@@ -1,13 +1,21 @@
-using disaster_platform_web.Clients;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace disaster_platform_web.Controllers;
 
-public class CuentaController(IPantallaClient api) : PantallaController(api)
+public class CuentaController(disaster_platform_web.Clients.IPantallaClient api, Microsoft.Extensions.Options.IOptions<disaster_platform_web.Clients.ApiOptions> options) : PantallaController(api)
 {
-    [HttpGet("Cuenta/Acceder")] public Task<IActionResult> Acceder() => Ver("AUTH");
+    [AllowAnonymous, HttpGet("Cuenta/Acceder")]
+    public async Task<IActionResult> Acceder(string? returnUrl = null)
+    {
+        if (options.Value.UseMock) return await Ver("AUTH");
+        return Challenge(new AuthenticationProperties { RedirectUri = Url.IsLocalUrl(returnUrl) ? returnUrl : "/" }, OpenIdConnectDefaults.AuthenticationScheme);
+    }
 
-    // Pendiente: SignOut de OIDC (Keycloak). Por ahora vuelve al acceso.
     [HttpPost("Cuenta/Salir"), ValidateAntiForgeryToken]
-    public IActionResult Salir() => Redirect("/Cuenta/Acceder");
+    public IActionResult Salir() => options.Value.UseMock ? Redirect("/Cuenta/Acceder") :
+        SignOut(new AuthenticationProperties { RedirectUri = "/" }, CookieAuthenticationDefaults.AuthenticationScheme, OpenIdConnectDefaults.AuthenticationScheme);
 }

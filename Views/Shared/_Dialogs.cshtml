@@ -17,7 +17,7 @@
                     @if (sendsExpectedVersion)
                     {
                         var version = Model.Detalle?.GetValueOrDefault("version")
-                            ?? Mock.Cell(Model.Screen.Cols.Single(c => c.Key == "version"), 0);
+                            ?? (Model.Simulado ? Mock.Cell(Model.Screen.Cols.Single(c => c.Key == "version"), 0) : "");
                         <input type="hidden" name="Values[expectedVersion]" value="@version" />
                     }
                     <div class="modal-header">

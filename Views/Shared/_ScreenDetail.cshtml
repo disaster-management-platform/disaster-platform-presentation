@@ -8,7 +8,7 @@
         <div class="col-lg-6">
             <div class="card">
                 <div class="card-header fw-semibold">Ubicación</div>
-                <div id="map" class="map" data-points="@Mock.PointsJson(true)"></div>
+                <div id="map" class="map" data-points="@(Model.Simulado ? Mock.PointsJson(true) : "[]")"></div>
             </div>
         </div>
     }
@@ -33,10 +33,10 @@
                     if (s.Id == "REC-03" && c.Key == "resultado" && string.IsNullOrWhiteSpace(v))
                     {
                         var priority = Model.Detalle?.GetValueOrDefault("priority")
-                            ?? Mock.Cell(s.Cols.First(column => column.Key == "priority"), 0);
+                            ?? (Model.Simulado ? Mock.Cell(s.Cols.First(column => column.Key == "priority"), 0) : "");
                         v = Mock.Resultado(priority);
                     }
-                    v ??= Mock.Cell(c, 0);
+                    v ??= Model.Simulado ? Mock.Cell(c, 0) : "—";
                     <dt class="col-sm-4 text-muted">@c.Label</dt>
                     <dd class="col-sm-8">
                         @if (c.Type == CT.Badge) { <span class="@Mock.Badge(v)">@Etiquetas.Es(v)</span> } else { @Etiquetas.Es(v) }
