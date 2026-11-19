@@ -87,6 +87,7 @@ public abstract class PantallaController(IPantallaClient api) : Controller
         var s = Catalog.Get(sid);
         var vm = new PantallaVm { Values = values, Key = Clave() };
         foreach (var f in s.Fields) Validar(vm.Errors, values, f);
+        if (sid == "REC-06") ValidarCronograma(values, vm.Errors);
         if (vm.Errors.Count > 0) return await Ver(sid, id, vm);
         try
         {
@@ -99,6 +100,59 @@ public abstract class PantallaController(IPantallaClient api) : Controller
             vm.FlashError = Mensaje(e);
             return await Ver(sid, id, vm);
         }
+    }
+
+    static void ValidarCronograma(Dictionary<string, string?> values, IDictionary<string, string> errors)
+    {
+        var lines = (values.GetValueOrDefault("activities") ?? "")
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (lines.Length == 0)
+        {
+            errors["activities"] = "Debe registrar al menos una actividad.";
+            return;
+        }
+
+        decimal total = 0;
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var parts = lines[i].Split(';').Select(part => part.Trim()).ToArray();
+            if (parts.Length != 5)
+            {
+                errors["activities"] = $"La actividad {i + 1} debe incluir tarea, responsable, fecha de inicio, vencimiento y presupuesto.";
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(parts[0]) || string.IsNullOrWhiteSpace(parts[1]))
+            {
+                errors["activities"] = $"La actividad {i + 1} debe indicar una tarea y un responsable.";
+                return;
+            }
+            if (!DateOnly.TryParseExact(parts[2], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var startsAt)
+                || !DateOnly.TryParseExact(parts[3], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dueAt))
+            {
+                errors["activities"] = $"La actividad {i + 1} debe incluir fechas válidas.";
+                return;
+            }
+            if (dueAt < startsAt)
+            {
+                errors["activities"] = $"La fecha de vencimiento de la actividad {i + 1} debe ser igual o posterior al inicio.";
+                return;
+            }
+            if (!decimal.TryParse(parts[4], NumberStyles.Number, CultureInfo.InvariantCulture, out var budget) || budget <= 0)
+            {
+                errors["activities"] = $"El presupuesto de la actividad {i + 1} debe ser mayor que cero.";
+                return;
+            }
+            if (budget > decimal.MaxValue - total)
+            {
+                errors["activities"] = "La suma de los presupuestos de las actividades no es válida.";
+                return;
+            }
+            total += budget;
+        }
+
+        if (decimal.TryParse(values.GetValueOrDefault("finalBudget"), NumberStyles.Number, CultureInfo.InvariantCulture, out var finalBudget)
+            && total > finalBudget)
+            errors["activities"] = "La suma de las actividades no puede superar el presupuesto final.";
     }
 
     protected async Task<IActionResult> Accion(string sid, string? id, string dialog, Dictionary<string, string?> values)

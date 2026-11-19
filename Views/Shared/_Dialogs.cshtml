@@ -18,7 +18,7 @@
                             <input type="hidden" name="Values[ids]" value="" data-selected-ids />
                             <p class="mb-0">Se crearán <span data-selected-count>0</span> proyectos a partir de las propuestas seleccionadas.</p>
                         }
-                        else if (d.Fields.Length == 0) { <p class="mb-0">¿Confirmas esta acción?</p> }
+                        else if (d.Fields.Length == 0) { <p class="mb-0">@(d.ConfirmationText ?? "¿Confirmas esta acción?")</p> }
                         @foreach (var f in d.Fields)
                         {
                             @await Html.PartialAsync("_Field", new FieldVm(f, null, null, "d-" + d.Id + "-"))

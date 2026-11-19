@@ -34,6 +34,9 @@ public class ReconstruccionController(IReconstruccionClient api) : PantallaContr
     [HttpPost("Reconstruccion/Proyectos/{id:guid}/Formalizacion"), ValidateAntiForgeryToken]
     public Task<IActionResult> Rec06Guardar(string id, [Bind(Prefix = "Values")] Dictionary<string, string?> values) => Guardar("REC-06", id, values);
 
+    [HttpPost("Reconstruccion/Proyectos/{id:guid}/Formalizacion/Accion/{dialog}"), ValidateAntiForgeryToken]
+    public Task<IActionResult> Rec06Accion(string id, string dialog, [Bind(Prefix = "Values")] Dictionary<string, string?> values) => Accion("REC-06", id, dialog, values);
+
     [HttpGet("Reconstruccion/Proyectos/{id:guid}/Contrato")]
     public Task<IActionResult> Rec07(string id) => Ver("REC-07", id);
 
@@ -75,4 +78,10 @@ public class ReconstruccionController(IReconstruccionClient api) : PantallaContr
 
     [HttpPost("Reconstruccion/Proyectos/{id:guid}/Cierre/Accion/{dialog}"), ValidateAntiForgeryToken]
     public Task<IActionResult> Rec13Accion(string id, string dialog, [Bind(Prefix = "Values")] Dictionary<string, string?> values) => Accion("REC-13", id, dialog, values);
+
+    [HttpGet("Reconstruccion/Proyectos/{id:guid}/Entidades")]
+    public Task<IActionResult> Rec14(string id) => Ver("REC-14", id);
+
+    [HttpPost("Reconstruccion/Proyectos/{id:guid}/Entidades/Accion/{dialog}"), ValidateAntiForgeryToken]
+    public Task<IActionResult> Rec14Accion(string id, string dialog, [Bind(Prefix = "Values")] Dictionary<string, string?> values) => Accion("REC-14", id, dialog, values);
 }

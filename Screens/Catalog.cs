@@ -776,12 +776,17 @@ public static class Catalog
                 SaveTo = "REC-05", CancelTo = "REC-05",
                 Fields =
                 [
-                    F("finalBudget", "Presupuesto final (COP)", FT.Number, req: true, min: 1),
+                    F("finalBudget", "Presupuesto final (COP)", FT.Number, req: true, min: 0.01,
+                        hint: "Presupuesto sugerido: $ 4.200 M, el de la entidad elegida."),
                     F("fundingSource", "Fuente de financiación", FT.Select, req: true, o: "Presupuesto nacional|Donaciones|Cooperación internacional"),
                     F("responsible", "Responsable", req: true, max: 200), F("contractor", "Contratista", req: true, max: 200),
-                    F("activities", "Actividades", FT.TextArea, req: true, hint: "Una por línea: nombre; responsable; inicio; vencimiento; presupuesto. La suma no puede superar el presupuesto final"),
+                    F("activities", "Cronograma", FT.TextArea, req: true),
                 ],
-                Links = [L("Registrar contrato", "REC-07")],
+                Dialogs = [D("confirmar", "Confirmar formalización", "Confirmar formalización") with
+                {
+                    ConfirmationText = "Se reservará el presupuesto y el proyecto pasará a monitoreo. No podrás editar el presupuesto sin registrar un motivo."
+                }],
+                Links = [L("Entidades y presupuestos", "REC-14"), L("Registrar contrato", "REC-07")],
             },
             M("REC-07", REC, "Contrato firmado", "Reconstruccion/Proyectos/{id:guid}/Contrato", Kind.Form, 'A', "POST P/contrato-firmado; GET P") with
             {
@@ -795,11 +800,14 @@ public static class Catalog
               "A GET P/monitoreo; E GET/POST P/actividades-operativas; PUT .../{activityId}") with
             {
                 Stage = 3,
+                Intro = "El estado de cada actividad se actualiza al registrar su reporte.",
                 TableTitle = "Actividades del cronograma",
                 Cols = projActCols,
                 Tables = [T("Actividades operativas", null, C("name", "Actividad", s: "Montaje de obra|Señalización"), C("statusId", "Estado", CT.Badge, estTarea),
                             C("startsAt", "Inicio", CT.Date), C("endsAt", "Fin", CT.Date), C("contactPersonId", "Contacto", s: "A. Vargas"))],
-                Dialogs = [D("nueva", "Nueva actividad operativa", "Nueva actividad operativa", activityDlg)],
+                Dialogs = [D("nueva", "Nueva actividad operativa", "Nueva actividad operativa",
+                    F("name", "Nombre", req: true, max: 200), F("responsible", "Responsable", req: true, max: 200),
+                    F("startsAt", "Inicio", FT.DateTime), F("endsAt", "Fin", FT.DateTime), F("comments", "Observaciones", FT.TextArea))],
                 Links = [L("Tareas", "REC-09"), L("Reportes", "REC-12"), L("Proyecto", "REC-05")],
             },
             M("REC-09", REC, "Gestión de tareas", "Reconstruccion/Proyectos/{id:guid}/Tareas", Kind.List, 'E', "E GET/POST P/tareas; PUT P/tareas/{taskId}") with
@@ -860,6 +868,36 @@ public static class Catalog
                             C("status", "Estado", CT.Badge, "Completed"), C("reportes", "Reportes", CT.Number), C("evidencias", "Evidencias", CT.Number))],
                 Dialogs = [D("cerrar", "Cerrar proyecto", "Cerrar proyecto")],
                 Links = [L("Proyecto", "REC-05")],
+            },
+
+            M("REC-14", REC, "Entidades y presupuestos", "Reconstruccion/Proyectos/{id:guid}/Entidades", Kind.Dashboard, 'N',
+              "N GET/POST P/entidad-gubernamental; GET/POST P/presupuestos-entidades; POST P/presupuestos-entidades/{id}/seleccion") with
+            {
+                Stage = 2,
+                Intro = "Contacta a la entidad de la zona, recibe presupuestos de las entidades especializadas y elige el más adecuado.",
+                Stats = [S("Entidad de la zona", "Gobernación del Quindío"), S("Presupuestos recibidos", "3"), S("Presupuesto elegido", "$ 4.200 M")],
+                TableTitle = "Presupuestos recibidos",
+                Cols = [C("entity", "Entidad especializada", s: "Ingeniería Vial SAS|Consorcio Estructuras del Eje|Obras del Valle"),
+                        C("assetType", "Tipo de activo", s: "Puente|Escuela|Vivienda"), C("offered", "Presupuesto ofertado", CT.Money, "$ 4.200 M|$ 3.800 M|$ 5.100 M"),
+                        C("receivedAt", "Recibido", CT.Date), C("status", "Estado", CT.Badge, "Recibido|Seleccionado|Descartado")],
+                Tables = [T("Entidad gubernamental de la zona", null, C("entity", "Entidad", s: "Gobernación del Quindío"),
+                            C("contact", "Contacto", s: "Mónica Ramírez"), C("status", "Estado", CT.Badge, "Pendiente|Contactada|Respondió"),
+                            C("date", "Fecha", CT.Date))],
+                Dialogs =
+                [
+                    D("contactar", "Registrar contacto con la entidad", "Registrar contacto con la entidad",
+                        F("entity", "Entidad gubernamental", FT.Select, req: true, o: "Gobernación del Quindío|Alcaldía de Calarcá"),
+                        F("contact", "Contacto", req: true, max: 200), F("observations", "Observaciones", FT.TextArea, max: 1000)),
+                    D("solicitar", "Solicitar presupuesto", "Solicitar presupuesto",
+                        F("entity", "Entidad especializada", FT.Select, req: true,
+                            o: "Ingeniería Vial SAS|Consorcio Estructuras del Eje|Obras del Valle"),
+                        F("assetType", "Tipo de activo", FT.Select, req: true, o: "Puente|Escuela|Vivienda")),
+                    D("elegir", "Elegir presupuesto", "Elegir presupuesto",
+                        F("entity", "Entidad especializada", FT.Select, req: true,
+                            o: "Ingeniería Vial SAS|Consorcio Estructuras del Eje|Obras del Valle"),
+                        F("reason", "Motivo", FT.TextArea, req: true, max: 1000)),
+                ],
+                Links = [L("Datos del proyecto", "REC-06", true), L("Proyecto", "REC-05")],
             },
 
             // ===== 8. Gestión de recursos =====

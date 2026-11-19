@@ -55,7 +55,7 @@ public abstract class HttpPantallaClient(HttpClient http) : IPantallaClient
 
     public async Task EnviarAsync(Screen s, string? dialog, IDictionary<string, string?> valores, Guid key, string? id, CancellationToken ct)
     {
-        var verbo = dialog is null ? "POST" : "PUT";
+        var verbo = dialog is null || (s.Id == "REC-06" && dialog == "confirmar") ? "POST" : "PUT";
         var ruta = Ruta(s, verbo, id) ?? Ruta(s, "POST", id) ?? Ruta(s, "PATCH", id) ?? Ruta(s, "GET", id);
         if (ruta is null) throw new HttpRequestException("Sin endpoint de escritura", null, System.Net.HttpStatusCode.NotImplemented);
         var req = new HttpRequestMessage(verbo == "PUT" && Ruta(s, "PUT", id) is not null ? HttpMethod.Put : HttpMethod.Post, ruta)

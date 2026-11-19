@@ -75,3 +75,92 @@ document.querySelectorAll('.table-card').forEach(card => {
     search?.addEventListener('input', apply);
     filters.forEach(f => f.addEventListener('change', apply));
 });
+
+const scheduleEditor = document.querySelector('[data-schedule-editor]');
+if (scheduleEditor) {
+    const body = scheduleEditor.querySelector('[data-schedule-rows]');
+    const hidden = document.querySelector('[data-schedule-value]');
+    const addButton = scheduleEditor.querySelector('[data-add-activity]');
+    const budgetInput = document.querySelector('#f-finalBudget');
+    const summary = scheduleEditor.querySelector('[data-budget-summary]');
+    const currency = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
+
+    const inputFor = (type, key, label, value = '') => {
+        const input = document.createElement('input');
+        input.type = type;
+        input.className = 'form-control';
+        input.dataset.scheduleField = key;
+        input.setAttribute('aria-label', label);
+        input.value = value;
+        if (type === 'number') input.step = 'any';
+        return input;
+    };
+
+    const addActivity = (values = []) => {
+        const row = document.createElement('tr');
+        const fields = [
+            ['text', 'task', 'Tarea'],
+            ['text', 'responsible', 'Responsable'],
+            ['date', 'startsAt', 'Fecha de inicio'],
+            ['date', 'dueAt', 'Fecha de vencimiento'],
+            ['number', 'budget', 'Presupuesto'],
+        ];
+        fields.forEach(([type, key, label], index) => {
+            const cell = document.createElement('td');
+            cell.append(inputFor(type, key, label, values[index] || ''));
+            row.append(cell);
+        });
+
+        const statusCell = document.createElement('td');
+        const status = document.createElement('span');
+        status.className = 'text-muted';
+        status.textContent = 'Pendiente';
+        statusCell.append(status);
+        row.append(statusCell);
+
+        const actionCell = document.createElement('td');
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'btn btn-outline-secondary';
+        removeButton.textContent = 'Quitar';
+        removeButton.addEventListener('click', () => {
+            row.remove();
+            updateSchedule();
+        });
+        actionCell.append(removeButton);
+        row.append(actionCell);
+        body.append(row);
+    };
+
+    const serialize = () => {
+        if (!hidden) return;
+        hidden.value = Array.from(body.rows).map(row =>
+            ['task', 'responsible', 'startsAt', 'dueAt', 'budget']
+                .map(key => row.querySelector(`[data-schedule-field="${key}"]`).value.trim())
+                .join('; ')
+        ).filter(line => line.split(';').some(value => value.trim())).join('\n');
+    };
+
+    const updateSchedule = () => {
+        const total = Array.from(body.rows).reduce((sum, row) => {
+            const amount = Number.parseFloat(row.querySelector('[data-schedule-field="budget"]').value);
+            return sum + (Number.isFinite(amount) ? amount : 0);
+        }, 0);
+        const finalBudget = Number.parseFloat(budgetInput?.value || '');
+        summary.textContent = `Suma de actividades: ${currency.format(total)} de ${currency.format(Number.isFinite(finalBudget) ? finalBudget : 0)}`;
+        serialize();
+    };
+
+    const initial = hidden?.value.trim();
+    if (initial) initial.split(/\r?\n/).forEach(line => addActivity(line.split(';').map(value => value.trim())));
+    else addActivity();
+
+    body.addEventListener('input', updateSchedule);
+    addButton.addEventListener('click', () => {
+        addActivity();
+        updateSchedule();
+    });
+    budgetInput?.addEventListener('input', updateSchedule);
+    scheduleEditor.closest('form')?.addEventListener('submit', serialize);
+    updateSchedule();
+}

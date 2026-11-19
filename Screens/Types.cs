@@ -21,7 +21,10 @@ public record Field
 }
 
 public record SubTable(string Title, Col[] Cols, string? RowTo);
-public record Dialog(string Id, string Label, string Title, Field[] Fields);
+public record Dialog(string Id, string Label, string Title, Field[] Fields)
+{
+    public string? ConfirmationText { get; init; }
+}
 public record Stat(string Label, string Value);
 public record Link(string Label, string To, bool Primary = false);
 
