@@ -11,7 +11,7 @@
                 <div class="card h-100">
                     <div class="card-body">
                         <div class="text-muted small">@st.Label</div>
-                        <div class="fs-2 fw-semibold">@(Model.Simulado ? st.Value : "—")</div>
+                        <div class="fs-2 fw-semibold">@(Model.Simulado || Model.RealStats ? st.Value : "—")</div>
                     </div>
                 </div>
             </div>
@@ -24,7 +24,7 @@
         <div class="col-lg-6">
             <div class="card">
                 <div class="card-header fw-semibold">Mapa</div>
-                <div id="map" class="map" data-points="@(Model.Simulado ? Mock.PointsJson(false) : "[]")"></div>
+                <div id="map" class="map" data-points="@(Model.Simulado ? Mock.PointsJson(false) : Model.PointsJson)"></div>
             </div>
         </div>
         @if (s.Cols.Length > 0)

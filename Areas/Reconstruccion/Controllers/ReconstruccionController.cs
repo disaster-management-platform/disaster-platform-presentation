@@ -7,6 +7,16 @@ namespace disaster_platform_web.Areas.Reconstruccion.Controllers;
 [Area("Reconstruccion")]
 public class ReconstruccionController(IReconstruccionClient api) : PantallaController(api)
 {
+    [HttpGet("Reconstruccion/Proyectos/{id:guid}/Adjuntos/{attachmentId:guid}")]
+    public async Task<IActionResult> Descargar(string id,string attachmentId)
+    {
+        using var response=await api.DownloadAsync(id,attachmentId,HttpContext.RequestAborted);
+        using var content=await response.Content.ReadAsStreamAsync(HttpContext.RequestAborted);
+        using var data=new MemoryStream();var buffer=new byte[81920];int count;
+        while((count=await content.ReadAsync(buffer,HttpContext.RequestAborted))>0){if(data.Length+count>20*1024*1024)return StatusCode(502);await data.WriteAsync(buffer.AsMemory(0,count),HttpContext.RequestAborted);}
+        return File(data.ToArray(),response.Content.Headers.ContentType?.MediaType??"application/octet-stream",Path.GetFileName(response.Content.Headers.ContentDisposition?.FileNameStar??response.Content.Headers.ContentDisposition?.FileName?.Trim('"')??attachmentId));
+    }
+
     [HttpGet("Reconstruccion")]
     public Task<IActionResult> Rec01() => Ver("REC-01", null);
 

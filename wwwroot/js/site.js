@@ -9,8 +9,12 @@ if (mapEl && window.L) {
     const color = s => (s >= 4 ? '#dc3545' : s === 3 ? '#fd7e14' : '#1f5fa8');
     const bounds = [];
     pts.forEach(p => {
-        L.circleMarker([p.lat, p.lng], { radius: 6 + p.sev * 2, color: color(p.sev), fillOpacity: 0.5 })
-            .addTo(map).bindPopup(`<b>${p.name}</b><br>Severidad ${p.sev}`);
+        if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return;
+        const title = document.createElement('span');
+        title.textContent = p.name;
+        L.marker([p.lat, p.lng]).addTo(map).bindPopup(title);
+        if (Number.isFinite(p.radio) && p.radio > 0) L.circle([p.lat, p.lng], { radius: p.radio, color: color(p.sev) }).addTo(map);
+        if (p.polygon) L.geoJSON(p.polygon).addTo(map);
         bounds.push([p.lat, p.lng]);
     });
     if (bounds.length > 1) map.fitBounds(bounds, { padding: [30, 30] });

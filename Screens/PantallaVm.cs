@@ -3,6 +3,12 @@ namespace disaster_platform_web.Screens;
 // ViewModel único de las pantallas del catálogo. Lo arman los controllers de cada área.
 public class PantallaVm
 {
+    public SelectOption[] Disasters { get; set; } = [];
+    public IReadOnlyList<IFormFile> Files { get; set; } = [];
+    public string? Unsupported { get; set; }
+    public string PointsJson { get; set; } = "[]";
+    public bool HasMore { get; set; }
+    public bool RealStats { get; set; }
     public bool Simulado { get; set; }
     public Screen Screen { get; set; } = default!;
     public string? RouteId { get; set; }

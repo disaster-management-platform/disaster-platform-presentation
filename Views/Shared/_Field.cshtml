@@ -4,6 +4,8 @@
     var id = Model.Prefix + f.Name;
     var name = $"Values[{f.Name}]";
     var v = Model.Value ?? "";
+    var original = v;
+    if (f.Type == FT.DateTime && DateTimeOffset.TryParse(v, out var instant)) v = instant.LocalDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture);
     var cls = "form-control" + (Model.Error is null ? "" : " is-invalid");
     var type = f.Type switch
     {
@@ -12,6 +14,11 @@
     };
 }
 <div class="mb-3">
+    @if (f.Type == FT.DateTime && !string.IsNullOrEmpty(original))
+    {
+        <input type="hidden" name="Values[original_@f.Name]" value="@original" />
+        <input type="hidden" name="Values[display_@f.Name]" value="@v" />
+    }
     @if (f.Type == FT.Bool)
     {
         <div class="form-check">
@@ -30,15 +37,15 @@
             case FT.Select:
                 <select class="@(cls.Replace("form-control", "form-select"))" id="@id" name="@name">
                     <option value="">Seleccione…</option>
-                    @foreach (var o in f.Options ?? Array.Empty<string>())
+                    @foreach (var o in f.Choices ?? (f.Options ?? []).Select(x => new SelectOption(x, x)))
                     {
-                        <option value="@o" selected="@(o == v)">@Etiquetas.Es(o)</option>
+                        <option value="@o.Value" selected="@(o.Value == v)">@Etiquetas.Es(o.Label)</option>
                     }
                 </select>
                 break;
             default:
                 <input type="@type" class="@cls" id="@id" name="@name" value="@(f.Type == FT.File ? null : v)"
-                       step="@(f.Type == FT.Number ? "any" : null)" multiple="@(f.Type == FT.File)"
+                       step="@(f.Type is FT.Number or FT.DateTime ? "any" : null)" multiple="@(f.Type == FT.File)"
                        maxlength="@(f.Max > 0 ? f.Max.ToString() : null)" />
                 break;
         }

@@ -12,6 +12,7 @@ public abstract class PantallaController(IPantallaClient api) : Controller
 {
     protected async Task<IActionResult> Ver(string sid, string? id = null, PantallaVm? vm = null)
     {
+        ViewData["EdenUrl"] = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Options.IOptions<ApiOptions>>().Value.EdenUrl;
         var s = Catalog.Get(sid);
         vm ??= new PantallaVm();
         vm.Screen = s;
@@ -28,6 +29,8 @@ public abstract class PantallaController(IPantallaClient api) : Controller
         var ct = HttpContext.RequestAborted;
         try
         {
+            await api.PrepararAsync(vm, Request.Query.ToDictionary(x => x.Key, x => (string?)x.Value.ToString()), ct);
+            s = vm.Screen;
             if (s.Kind == Kind.List || (s.Kind == Kind.Dashboard && s.Cols.Length > 0))
                 vm.Filas = await api.FilasAsync(s, s.Cols, s.RowTo, id, -1, ct);
             if (s.Id == "REC-02" && vm.Filas is not null)
@@ -39,8 +42,13 @@ public abstract class PantallaController(IPantallaClient api) : Controller
                     .ToArray();
             for (var i = 0; i < s.Tables.Length; i++)
                 vm.FilasSub[i] = await api.FilasAsync(s, s.Tables[i].Cols, s.Tables[i].RowTo, id, i, ct) ?? [];
-            if (s.Kind == Kind.Detail)
+            if (id is not null && s.Id != "ORG-08" || s.Kind == Kind.Detail)
+            {
                 vm.Detalle = await api.DetalleAsync(s, id, ct);
+                if (vm.Detalle is not null)
+                    foreach (var (name, value) in vm.Detalle) vm.Values.TryAdd(name, value);
+                if (vm.Detalle?.GetValueOrDefault("version") is { } version) vm.Values.TryAdd("expectedVersion", version);
+            }
             if (s.Stage == 3 && id is not null)
             {
                 var proyecto = await api.DetalleAsync(Catalog.Get("REC-05"), id, ct);
@@ -55,7 +63,7 @@ public abstract class PantallaController(IPantallaClient api) : Controller
         }
         if (s.Id == "REC-05")
         {
-            var status = vm.Detalle?.GetValueOrDefault("status") ?? "Monitoring";
+            var status = vm.Detalle?.GetValueOrDefault("status") ?? "";
             vm.ProjectStatus = status;
             vm.Screen = s with { Stage = Etapa(status) };
         }
@@ -109,7 +117,9 @@ public abstract class PantallaController(IPantallaClient api) : Controller
     protected async Task<IActionResult> Guardar(string sid, string? id, Dictionary<string, string?> values)
     {
         var s = Catalog.Get(sid);
-        var vm = new PantallaVm { Values = values, Key = Clave() };
+        var vm = new PantallaVm { Screen = s, RouteId = id, Values = values, Key = Clave(), Files = Request.Form.Files.ToArray() };
+        try { await api.PrepararAsync(vm, Request.Query.ToDictionary(x => x.Key, x => (string?)x.Value.ToString()), HttpContext.RequestAborted); s = vm.Screen; }
+        catch (Exception e) when (e is HttpRequestException or TaskCanceledException) { vm.FlashError = Mensaje(e); return await Ver(sid,id,vm); }
         foreach (var f in s.Fields)
         {
             if (f.Type == FT.File)
@@ -125,9 +135,10 @@ public abstract class PantallaController(IPantallaClient api) : Controller
         if (vm.Errors.Count > 0) return await Ver(sid, id, vm);
         try
         {
-            await api.EnviarAsync(s, null, values, vm.Key, id, HttpContext.RequestAborted);
+            var resultId = await api.EnviarAsync(s, null, values, vm.Key, id, HttpContext.RequestAborted);
+            if (!api.Simulado && id is null && s.SaveTo is not null && Catalog.Get(s.SaveTo).Route.Contains('{') && string.IsNullOrWhiteSpace(resultId)) throw new ContractException("El servicio no confirmó el identificador creado; reintenta con la misma operación.");
             TempData["Msg"] = api.Simulado ? "Guardado (datos de ejemplo, Api:UseMock=true)." : "Guardado.";
-            return Redirect(s.SaveTo is null ? Request.Path.Value! : Catalog.Url(s.SaveTo, id));
+            return Redirect(s.SaveTo is null ? Request.Path.Value! : Catalog.Url(s.SaveTo, string.IsNullOrEmpty(resultId) ? id : resultId) + ContextQuery());
         }
         catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
         {
@@ -192,20 +203,21 @@ public abstract class PantallaController(IPantallaClient api) : Controller
     protected async Task<IActionResult> Accion(string sid, string? id, string dialog, Dictionary<string, string?> values)
     {
         var s = Catalog.Get(sid);
+        var actionVm = new PantallaVm { Screen = s, RouteId = id, Values = values, Key = Clave(), Files = Request.Form.Files.ToArray() };
+        try { await api.PrepararAsync(actionVm, Request.Query.ToDictionary(x => x.Key, x => (string?)x.Value.ToString()), HttpContext.RequestAborted); s = actionVm.Screen; }
+        catch (Exception e) when (e is HttpRequestException or TaskCanceledException) { TempData["Err"] = Mensaje(e); return Redirect(Catalog.Url(sid,id)+ContextQuery()); }
         var d = s.Dialogs.FirstOrDefault(x => x.Id == dialog);
         if (d is null) return NotFound();
         if (sid == "REC-02" && dialog == "proyectos")
             return await CrearProyectos(s, id, values);
-        if ((sid == "REC-13" && dialog == "cerrar") || sid == "ORG-08")
+        if (sid == "REC-13" && dialog == "cerrar")
         {
-            var versionError = sid == "REC-13"
-                ? "No se pudo determinar la versión actual del proyecto."
-                : "No se pudo determinar la versión actual de la tarea.";
-            if (!int.TryParse(values.GetValueOrDefault("expectedVersion"), NumberStyles.Integer,
-                    CultureInfo.InvariantCulture, out var expectedVersion) || expectedVersion <= 0)
+            const string versionError = "No se pudo determinar la versión actual del proyecto.";
+            if (!long.TryParse(values.GetValueOrDefault("expectedVersion"), NumberStyles.Integer,
+                    CultureInfo.InvariantCulture, out var expectedVersion) || expectedVersion < 0)
             {
                 TempData["Err"] = versionError;
-                return Redirect(Catalog.Url(sid, id));
+                return Redirect(Catalog.Url(sid, id)+ContextQuery());
             }
         }
         if (sid == "REC-13" && dialog == "cerrar")
@@ -219,13 +231,13 @@ public abstract class PantallaController(IPantallaClient api) : Controller
                 if (canFinalize != true)
                 {
                     TempData["Err"] = "No se puede cerrar el proyecto mientras existan actividades incompletas o reportes pendientes.";
-                    return Redirect(Catalog.Url(sid, id));
+                    return Redirect(Catalog.Url(sid, id)+ContextQuery());
                 }
             }
             catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
             {
                 TempData["Err"] = Mensaje(e);
-                return Redirect(Catalog.Url(sid, id));
+                return Redirect(Catalog.Url(sid, id)+ContextQuery());
             }
         }
         var errores = new Dictionary<string, string>();
@@ -235,14 +247,16 @@ public abstract class PantallaController(IPantallaClient api) : Controller
         else
             try
             {
-                await api.EnviarAsync(s, dialog, values, Clave(), id, HttpContext.RequestAborted);
-                TempData["Msg"] = api.Simulado ? $"{d.Title}: acción simulada (Api:UseMock=true)." : $"{d.Title}: listo.";
+                var resultId = await api.EnviarAsync(s, dialog, values, actionVm.Key, id, HttpContext.RequestAborted);
+                if (sid == "REC-03" && dialog == "proyecto" && !string.IsNullOrEmpty(resultId)) return Redirect(Catalog.Url("REC-05", resultId)+ContextQuery());
+                TempData["Msg"] = api.Simulado ? $"{d.Title}: acción simulada (Api:UseMock=true)." : $"{d.Title}: listo." + (string.IsNullOrEmpty(resultId)?"":" ID: "+resultId);
             }
             catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
             {
-                TempData["Err"] = $"{d.Title}: {Mensaje(e)}";
+                actionVm.FlashError = $"{d.Title}: {Mensaje(e)}";
+                return await Ver(sid,id,actionVm);
             }
-        return Redirect(Catalog.Url(sid, id));
+        return Redirect(Catalog.Url(sid, id)+ContextQuery());
     }
 
     async Task<IActionResult> CrearProyectos(Screen screen, string? id, Dictionary<string, string?> values)
@@ -265,7 +279,8 @@ public abstract class PantallaController(IPantallaClient api) : Controller
                 {
                     ["ids"] = proposalId
                 };
-                await api.EnviarAsync(screen, "proyectos", requestValues, Guid.NewGuid(), proposalId, HttpContext.RequestAborted);
+                var operationKey = new Guid(System.Security.Cryptography.SHA256.HashData(Clave().ToByteArray().Concat(Guid.Parse(proposalId).ToByteArray()).ToArray()).AsSpan(0,16));
+                await api.EnviarAsync(screen, "proyectos", requestValues, operationKey, proposalId, HttpContext.RequestAborted);
                 creados++;
             }
             TempData["Msg"] = $"{creados} proyectos creados.";
@@ -279,11 +294,13 @@ public abstract class PantallaController(IPantallaClient api) : Controller
         return Redirect(Catalog.Url(screen.Id, id));
     }
 
+    string ContextQuery() => int.TryParse(Request.Query["disasterId"], out var id) && id > 0 ? "?disasterId=" + id : "";
+
     Guid Clave() => Guid.TryParse(Request.Form["Key"], out var k) ? k : Guid.NewGuid();
 
     static string Mensaje(Exception e) => (e as HttpRequestException)?.StatusCode switch
     {
-        HttpStatusCode.BadRequest or HttpStatusCode.UnprocessableEntity => "La operación no cumple una regla de negocio.",
+        HttpStatusCode.BadRequest or HttpStatusCode.UnprocessableEntity => e is ContractException ? e.Message : "La operación no cumple una regla de negocio.",
         HttpStatusCode.Unauthorized => "La sesión expiró, vuelve a ingresar.",
         HttpStatusCode.Forbidden => "No tienes permiso para esta operación.",
         HttpStatusCode.NotFound => "El recurso no existe.",

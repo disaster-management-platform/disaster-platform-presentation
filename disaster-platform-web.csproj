@@ -14,8 +14,11 @@
     <Using Include="Microsoft.Extensions.Options" />
     <Using Include="disaster_platform_web.Screens" />
     <Using Include="disaster_platform_web.Clients" />
-    <Using Include="disaster_platform_web.Areas.Desastres.Models" />
     <Using Include="disaster_platform_web.Areas.Desastres.Clients" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="scripts/**/*.cs" />
   </ItemGroup>
 
   <ItemGroup>

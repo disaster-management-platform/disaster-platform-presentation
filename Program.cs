@@ -79,7 +79,7 @@ void Registrar<TI, TFake, TImpl>(Func<ApiOptions, string> url)
     else builder.Services.AddHttpClient<TI, TImpl>((sp, c) =>
     {
         c.BaseAddress = new Uri(url(sp.GetRequiredService<IOptions<ApiOptions>>().Value).TrimEnd('/') + "/");
-        c.Timeout = TimeSpan.FromSeconds(5);
+        c.Timeout = TimeSpan.FromSeconds(30);
     }).AddHttpMessageHandler<BearerHandler>();
 }
 

@@ -1,6 +1,7 @@
 @model TableVm
 @{
     var rows = (Model.Rows ?? Mock.Rows(Model.Cols, Model.RowTo)).ToArray();
+    var attachments = rows.Any(x => x.Attachments?.Count > 0);
     var statusIndex = Array.FindIndex(Model.Cols, c => c.Key == "status");
 }
 <div class="card mb-4 table-card">
@@ -11,7 +12,18 @@
             <div class="row g-2">
                 @if (Model.Search)
                 {
-                    <div class="col-md-4"><input type="search" class="form-control form-control-sm" placeholder="Buscar…" data-table-search /></div>
+                    @if (Context.Request.Path.Value?.TrimEnd('/') is "/Organizaciones" or "/Personas/Lista")
+                    {
+                        <form method="get" class="col-md-4 d-flex gap-2">
+                            <input type="hidden" name="disasterId" value="@Context.Request.Query["disasterId"]" />
+                            <input type="search" name="search" value="@Context.Request.Query["search"]" class="form-control form-control-sm" placeholder="Buscar en el directorio…" />
+                            <button class="btn btn-sm btn-outline-secondary">Buscar</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <div class="col-md-4"><input type="search" class="form-control form-control-sm" placeholder="Buscar en esta tabla…" data-table-search /></div>
+                    }
                 }
                 @foreach (var f in Model.Filters)
                 {
@@ -33,6 +45,7 @@
                 <tr>
                     @if (Model.Selectable) { <th scope="col" class="text-center"><input type="checkbox" class="form-check-input m-0" data-select-all aria-label="Seleccionar todas las propuestas" /></th> }
                     @foreach (var c in Model.Cols) { <th scope="col">@c.Label</th> }
+                    @if (attachments) { <th scope="col">Archivos</th> }
                 </tr>
             </thead>
             <tbody>
@@ -59,6 +72,7 @@
                             {
                                 <td>@if (cell.Badge) { <span class="@Mock.Badge(cell.Text)">@Etiquetas.Es(cell.Text)</span> } else { @Etiquetas.Es(cell.Text) }</td>
                             }
+                            @if (attachments) { <td>@foreach (var file in row.Attachments ?? []) { <a href="@file.Url" class="d-block">@file.Label</a> }</td> }
                         </tr>
                     }
                 }

@@ -8,7 +8,7 @@
         <div class="col-lg-6">
             <div class="card">
                 <div class="card-header fw-semibold">Ubicación</div>
-                <div id="map" class="map" data-points="@(Model.Simulado ? Mock.PointsJson(true) : "[]")"></div>
+                <div id="map" class="map" data-points="@(Model.Simulado ? Mock.PointsJson(true) : Model.PointsJson)"></div>
             </div>
         </div>
     }

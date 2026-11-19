@@ -57,5 +57,4 @@ public class OrganizacionesController(IOrganizacionesClient api) : PantallaContr
         string id, string dialog, [Bind(Prefix = "Values")] Dictionary<string, string?> values) =>
         Accion("ORG-02", id, dialog, values);
 
-    // TODO ABAC: enforce role and organization-level access before write actions.
 }

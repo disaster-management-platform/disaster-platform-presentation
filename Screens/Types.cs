@@ -6,6 +6,8 @@ public enum FT { Text, TextArea, Number, Date, DateTime, Select, Email, Phone, F
 
 public record Col(string Key, string Label, CT Type = CT.Text, string[]? Sample = null);
 
+public record SelectOption(string Value, string Label);
+
 public record Field
 {
     public string Name { get; init; } = "";
@@ -17,6 +19,7 @@ public record Field
     public double? Maximum { get; init; }
     public bool NoFuture { get; init; }
     public string[]? Options { get; init; }
+    public SelectOption[]? Choices { get; init; }
     public string? Hint { get; init; }
 }
 
@@ -65,4 +68,5 @@ public record TableVm(string? Title, Col[] Cols, string? RowTo, Field[] Filters,
     public bool Selectable { get; init; }
 }
 public record FieldVm(Field F, string? Value, string? Error, string Prefix);
-public record Row(string? Href, (string Text, bool Badge)[] Cells, string? Id = null);
+public record AttachmentLink(string Url, string Label);
+public record Row(string? Href, (string Text, bool Badge)[] Cells, string? Id = null, IReadOnlyList<AttachmentLink>? Attachments = null);

@@ -19,9 +19,9 @@ else
     @if (hasActions)
     {
         <div class="d-flex flex-wrap gap-2 mb-4 no-print">
-            @foreach (var l in s.Links)
+            @foreach (var l in s.Links.Where(l => Model.Simulado || Model.RouteId is not null || !Catalog.Get(l.To).Route.Contains('{')))
             {
-                <a class="@("btn px-3 " + (l.Primary ? "btn-primary" : "btn-outline-secondary"))" href="@Catalog.Url(l.To, Model.RouteId)">@l.Label</a>
+                <a class="@("btn px-3 " + (l.Primary ? "btn-primary" : "btn-outline-secondary"))" href="@(Catalog.Url(l.To, Model.RouteId) + (Model.RouteId != null && !int.TryParse(Model.RouteId,out _) && Context.Request.Query.ContainsKey("disasterId") ? "?disasterId=" + Context.Request.Query["disasterId"] : ""))">@l.Label</a>
             }
             @foreach (var d in s.Dialogs)
             {
@@ -34,6 +34,16 @@ else
         </div>
     }
 
+    @if (!Model.Simulado && Model.Disasters.Length > 0)
+    {
+        <form method="get" class="mb-3 d-flex gap-2">
+            <select name="disasterId" class="form-select" aria-label="Desastre">
+                <option value="">Selecciona un desastre</option>
+                @foreach (var disaster in Model.Disasters) { <option value="@disaster.Value" selected="@(disaster.Value == Context.Request.Query["disasterId"])">@disaster.Label</option> }
+            </select><button class="btn btn-outline-primary">Consultar</button>
+        </form>
+    }
+    @if (Model.Unsupported is not null) { <div class="alert alert-info">@Model.Unsupported <a href="@((string?)ViewData["EdenUrl"] ?? "http://localhost:8001/eden_default")" target="_blank" rel="noopener">Abrir Eden</a></div> }
     @if (Model.Flash is not null) { <div class="alert alert-success">@Model.Flash</div> }
     @if (Model.FlashError is not null) { <div class="alert alert-danger">@Model.FlashError</div> }
 
@@ -45,7 +55,7 @@ else
         </div>
     }
 
-    @if (s.Id == "REC-13" && !Model.CanFinalize)
+    @if (s.Id == "REC-13" && !Model.CanFinalize && Model.ProjectStatus != "Closed")
     {
         <div class="alert alert-warning" role="alert">
             No se puede cerrar el proyecto mientras existan actividades incompletas o reportes pendientes.
@@ -87,10 +97,7 @@ else
         <partial name="_ScreenChart" model="Model" />
     }
 
+    @if (Model.HasMore) { <a class="btn btn-outline-primary" href="?disasterId=@Context.Request.Query["disasterId"]&search=@Uri.EscapeDataString(Context.Request.Query["search"].ToString())&page=@((int.TryParse(Context.Request.Query["page"], out var page) ? page : 0) + 1)">Página siguiente</a> }
     <partial name="_Dialogs" model="Model" />
 
-    <div class="mt-4 pt-2 border-top small text-muted no-print">
-        <span class="badge text-bg-light border">@s.State</span> @s.Api
-        <div>A = API existente · N = contrato propuesto · E = adaptador Integration Service pendiente</div>
-    </div>
 }

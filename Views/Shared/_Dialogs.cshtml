@@ -3,21 +3,20 @@
 {
     var isBulkProjects = Model.Screen.Id == "REC-02" && d.Id == "proyectos";
     var isBlockedClose = Model.Screen.Id == "REC-13" && d.Id == "cerrar" && !Model.CanFinalize;
-    var hasVersion = Model.Screen.Cols.Any(c => c.Key == "version");
-    var sendsExpectedVersion = Model.Screen.Id == "REC-13" && d.Id == "cerrar"
-        || Model.Screen.Id == "ORG-08" && hasVersion;
+    var sendsExpectedVersion = !Model.Simulado || Model.Screen.Id == "REC-13" && d.Id == "cerrar";
     var multipart = d.Fields.Any(f => f.Type == FT.File);
     <div class="modal fade" id="dlg-@d.Id" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <form method="post" enctype="@(multipart ? "multipart/form-data" : "application/x-www-form-urlencoded")"
-                      action="@(Context.Request.Path.Value!.TrimEnd('/'))/Accion/@d.Id" novalidate>
+                      action="@(Context.Request.Path.Value!.TrimEnd('/'))/Accion/@d.Id@(Context.Request.QueryString)" novalidate>
                     @Html.AntiForgeryToken()
-                    <input type="hidden" name="Key" value="@Guid.NewGuid()" />
+                    <input type="hidden" name="Key" value="@Model.Key" />
                     @if (sendsExpectedVersion)
                     {
                         var version = Model.Detalle?.GetValueOrDefault("version")
-                            ?? (Model.Simulado ? Mock.Cell(Model.Screen.Cols.Single(c => c.Key == "version"), 0) : "");
+                            ?? Model.Values.GetValueOrDefault("expectedVersion")
+                            ?? "";
                         <input type="hidden" name="Values[expectedVersion]" value="@version" />
                     }
                     <div class="modal-header">
@@ -33,7 +32,7 @@
                         else if (d.Fields.Length == 0) { <p class="mb-0">@(d.ConfirmationText ?? "¿Confirmas esta acción?")</p> }
                         @foreach (var f in d.Fields)
                         {
-                            @await Html.PartialAsync("_Field", new FieldVm(f, null, null, "d-" + d.Id + "-"))
+                            @await Html.PartialAsync("_Field", new FieldVm(f, Model.Values.GetValueOrDefault(f.Name), null, "d-" + d.Id + "-"))
                         }
                     </div>
                     <div class="modal-footer">

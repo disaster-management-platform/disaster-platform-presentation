@@ -7,6 +7,14 @@ namespace disaster_platform_web.Areas.Danos.Controllers;
 [Area("Danos")]
 public class DanosController(IDanosClient api) : PantallaController(api)
 {
+    [HttpGet("Danos/{id:guid}/Evidencias/{evidenceId:guid}/Descarga")]
+    public async Task<IActionResult> Descargar(string id,string evidenceId)
+    {
+        Response.Headers.CacheControl="no-store";
+        Response.Headers.Location=await api.DownloadAsync(id,evidenceId,HttpContext.RequestAborted);
+        return StatusCode(302);
+    }
+
     [HttpGet("Danos")]
     public Task<IActionResult> Dam01() => Ver("DAM-01", null);
 

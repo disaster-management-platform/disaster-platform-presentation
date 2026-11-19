@@ -13,6 +13,9 @@ public class PersonasController(IPersonasClient api) : PantallaController(api)
     [HttpGet("Personas/Lista")]
     public Task<IActionResult> Peo02() => Ver("PEO-02", null);
 
+    [HttpPost("Personas/Lista/Accion/{dialog}"), ValidateAntiForgeryToken]
+    public Task<IActionResult> Peo02Accion(string dialog, [Bind(Prefix = "Values")] Dictionary<string,string?> values) => Accion("PEO-02",null,dialog,values);
+
     [HttpGet("Personas/Crear")]
     public Task<IActionResult> Peo03() => Ver("PEO-03", null);
 
