@@ -8,10 +8,14 @@
         ("Desastres", "/Desastres", "/Desastres"),
         ("Daños", "/Danos", "/Danos"),
         ("Personas afectadas", "/Personas", "/Personas"),
+        ("Recursos", "/Recursos", "/Recursos"),
         ("Organizaciones", "/Organizaciones", "/Organizaciones"),
         ("Reconstrucción", "/Reconstruccion", "/Reconstruccion"),
     };
     var disasterId = Context.Request.Query["disasterId"].ToString();
+    var isSystem = path.StartsWith("/Auditoria", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith("/Integraciones", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith("/Administracion", StringComparison.OrdinalIgnoreCase);
 }
 <nav class="navbar navbar-expand-xl navbar-dark bg-dark no-print">
     <div class="container-xl">
@@ -27,6 +31,15 @@
                         <a class="@("nav-link" + (On(it.Prefix) ? " active" : ""))" href="@it.Href">@it.Text</a>
                     </li>
                 }
+                <li class="nav-item dropdown">
+                    <a class="@("nav-link dropdown-toggle" + (isSystem ? " active" : ""))" href="#" role="button"
+                       data-bs-toggle="dropdown" aria-expanded="false">Sistema</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="@("dropdown-item" + (On("/Auditoria") ? " active" : ""))" href="/Auditoria">Auditoría</a></li>
+                        <li><a class="@("dropdown-item" + (On("/Integraciones") ? " active" : ""))" href="/Integraciones">Integraciones</a></li>
+                        <li><a class="@("dropdown-item" + (On("/Administracion") ? " active" : ""))" href="/Administracion">Administración</a></li>
+                    </ul>
+                </li>
             </ul>
             <div class="d-flex align-items-center gap-3 text-light small">
                 @if (!string.IsNullOrEmpty(disasterId))

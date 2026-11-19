@@ -105,7 +105,7 @@ public static class Catalog
     {
         const string AUT = "Autenticación", HOM = "Inicio", DIS = "Gestión de desastres", DAM = "Evaluación de daños",
                      PEO = "Personas afectadas", ORG = "Coordinación de organizaciones", REC = "Reconstrucción",
-                     RES = "Gestión de recursos";
+                     RES = "Gestión de recursos", ADM = "Administración", AUD = "Auditoría", INT = "Integraciones";
 
         Screen M(string id, string mod, string title, string route, Kind k, char st, string api) =>
             new()
@@ -722,7 +722,8 @@ public static class Catalog
                           T("Auditoría", null, C("occurredAt", "Fecha", CT.Date), C("actor", "Actor", s: "j.pardo|m.torres"),
                             C("accion", "Acción", s: "Cambio de presupuesto|Registro de contrato|Reporte de avance"))],
                 Links = [L("Formalización", "REC-06"), L("Contrato", "REC-07"), L("Cronograma", "REC-08"), L("Tareas", "REC-09"),
-                         L("Participantes", "REC-10"), L("Finanzas", "REC-11"), L("Reportes", "REC-12"), L("Cierre", "REC-13")],
+                         L("Participantes", "REC-10"), L("Finanzas", "REC-11"), L("Reportes", "REC-12"), L("Cierre", "REC-13"),
+                         L("Historial de cambios", "AUD-01")],
             },
             M("REC-06", REC, "Formalización del proyecto", "Reconstruccion/Proyectos/{id:guid}/Formalizacion", Kind.Form, 'A',
               "GET /api/reconstruccion/financiacion?disasterId={id}; PUT P/formalizacion; POST P/confirmar-formalizacion") with
@@ -781,7 +782,7 @@ public static class Catalog
                         C("actualCost", "Costo real", CT.Money), C("remainingBudget", "Saldo", CT.Money)],
                 Dialogs = [D("revisar", "Revisar presupuesto", "Revisar presupuesto", F("budget", "Nuevo presupuesto", FT.Number, req: true, min: 1),
                                 F("reason", "Motivo", FT.TextArea, req: true, max: 1000))],
-                Links = [L("Reportes", "REC-12"), L("Proyecto", "REC-05")],
+                Links = [L("Reportes", "REC-12"), L("Proyecto", "REC-05"), L("Historial de cambios", "AUD-01")],
             },
             M("REC-12", REC, "Reportes y evidencias", "Reconstruccion/Proyectos/{id:guid}/Reportes", Kind.Form, 'A',
               "POST P/adjuntos (multipart file/category); GET P/adjuntos/{attachmentId}; POST P/actividades/{activityId}/reportes") with
@@ -919,6 +920,88 @@ public static class Catalog
                       F("donante", "Donante", req: true), F("tipo", "Tipo", FT.Select, req: true, o: "Dinero|Alimentos|Medicamentos|Equipos"),
                       F("descripcion", "Descripción", req: true), F("cantidad", "Cantidad", FT.Number, req: true, min: 1),
                       F("receptor", "Organización receptora", FT.Select, req: true, o: orgs)),
+                ],
+            },
+
+            // ===== 9. Administración de tipos =====
+            M("ADM-01", ADM, "Tipos de desastre y niveles de atención", "Administracion", Kind.List, 'N',
+              "N GET/POST /api/administracion/tipos-desastre; GET/PUT /api/administracion/niveles-atencion") with
+            {
+                Intro = "Los tipos y niveles se configuran aquí, sin cambiar el código.",
+                TableTitle = "Tipos de desastre",
+                Cols =
+                [
+                    C("tipo", "Tipo de desastre", s: "Terremoto|Inundación|Incendio|Deslizamiento|Huracán|Erupción volcánica"),
+                    C("descripcion", "Descripción", s: "Movimiento del terreno|Desbordamiento de ríos|Fuego no controlado"),
+                    C("activo", "Estado", CT.Badge, "Activo|Activo|Inactivo"),
+                ],
+                Filters = [F("activo", "Estado", o: "Activo|Inactivo")],
+                Tables =
+                [
+                    T("Niveles de atención", null,
+                      C("nivel", "Nivel", s: nivelesAtencion),
+                      C("criterio", "Criterio", s: "Recursos locales|Coordinación entre organismos|Recursos regionales o nacionales|Coordinación nacional e internacional")),
+                ],
+                Dialogs =
+                [
+                    D("crear", "Nuevo tipo de desastre", "Nuevo tipo de desastre",
+                      F("nombre", "Nombre", req: true), F("descripcion", "Descripción", FT.TextArea)),
+                    D("desactivar", "Desactivar tipo", "Desactivar tipo",
+                      F("nombre", "Tipo de desastre", req: true)),
+                ],
+            },
+            M("AUD-01", AUD, "Auditoría y trazabilidad", "Auditoria", Kind.List, 'N',
+              "N GET /api/auditoria?entidad=&usuario=&desde=&hasta=") with
+            {
+                Intro = "Quién hizo qué, cuándo, sobre qué información y con qué resultado.",
+                Print = true,
+                Cols =
+                [
+                    C("occurredAt", "Fecha y hora", CT.Date), C("usuario", "Usuario", s: "j.pardo|m.torres|a.vargas"),
+                    C("organizacion", "Organización", s: orgs),
+                    C("accion", "Acción", s: "Cambió nivel de atención|Asignó recurso|Modificó presupuesto|Actualizó persona afectada|Cambió estado del proyecto"),
+                    C("entidad", "Entidad", s: "Desastre|Recurso|Presupuesto|Persona afectada|Proyecto"),
+                    C("referencia", "Sobre qué", s: "DIS-0001|SOL-0101|PRY-0007"),
+                    C("resultado", "Resultado", CT.Badge, "Exitoso|Rechazado|Error"),
+                ],
+                Filters =
+                [
+                    F("entidad", "Entidad", o: "Desastre|Recurso|Presupuesto|Persona afectada|Proyecto"),
+                    F("resultado", "Resultado", o: "Exitoso|Rechazado|Error"),
+                    F("organizacion", "Organización", o: orgs),
+                ],
+            },
+            M("INT-01", INT, "Estado de integraciones", "Integraciones", Kind.Dashboard, 'N',
+              "N GET /api/integraciones/estado; POST /api/integraciones/{id}/reintento") with
+            {
+                Intro = "Disponibilidad de los sistemas externos y mensajes pendientes de sincronizar.",
+                Stats =
+                [
+                    S("Sistemas conectados", "7"), S("Disponibles", "5"),
+                    S("Degradados o caídos", "2"), S("Mensajes en cola", "38"),
+                ],
+                TableTitle = "Estado de los sistemas",
+                Cols =
+                [
+                    C("sistema", "Sistema", s: "Alertas y monitoreo|Sistema GIS|Sistema hospitalario|Gestión de recursos|Personas afectadas (Eden)|Financiero|Notificaciones"),
+                    C("tipo", "Mecanismo", s: "REST|Eventos|Webhook|Mensajería"),
+                    C("estado", "Estado", CT.Badge, "Disponible|Degradado|No disponible"),
+                    C("circuito", "Circuito", CT.Badge, "Normal|En corte|Prueba"),
+                    C("ultimo", "Último intento", CT.Date), C("cola", "En cola", CT.Number),
+                ],
+                Tables =
+                [
+                    T("Pendientes de sincronizar", null,
+                      C("operacion", "Operación", s: "Actualizar desastre|Registrar evaluación|Asignar recurso"),
+                      C("sistema", "Sistema", s: "Sistema GIS|Sistema hospitalario|Gestión de recursos"),
+                      C("creada", "Creada", CT.Date), C("intentos", "Intentos", CT.Number),
+                      C("estado", "Estado", CT.Badge, "Pendiente|Reintentando|Fallida")),
+                ],
+                Dialogs =
+                [
+                    D("reintentar", "Reintentar envío", "Reintentar envío",
+                      F("sistema", "Sistema", FT.Select, req: true,
+                        o: "Alertas y monitoreo|Sistema GIS|Sistema hospitalario|Gestión de recursos|Personas afectadas|Financiero|Notificaciones")),
                 ],
             },
         };

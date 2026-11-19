@@ -4,6 +4,7 @@ using disaster_platform_web.Areas.Organizaciones.Clients;
 using disaster_platform_web.Areas.Personas.Clients;
 using disaster_platform_web.Areas.Reconstruccion.Clients;
 using disaster_platform_web.Areas.Recursos.Clients;
+using disaster_platform_web.Areas.Sistema.Clients;
 using disaster_platform_web.Clients;
 using Microsoft.Extensions.Options;
 
@@ -38,6 +39,7 @@ Registrar<IReconstruccionClient, FakeReconstruccionClient, ReconstruccionClient>
 Registrar<IPersonasClient, FakePersonasClient, PersonasClient>(o => o.IntegrationUrl);
 Registrar<IOrganizacionesClient, FakeOrganizacionesClient, OrganizacionesClient>(o => o.IntegrationUrl);
 Registrar<IRecursosClient, FakeRecursosClient, RecursosClient>(o => o.IntegrationUrl);
+Registrar<ISistemaClient, FakeSistemaClient, SistemaClient>(o => o.GatewayUrl);
 
 var app = builder.Build();
 

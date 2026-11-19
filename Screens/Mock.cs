@@ -59,15 +59,15 @@ public static class Mock
                 cols.Select(c => (Cell(c, i), c.Type == CT.Badge)).ToArray());
     }
 
-    static readonly string[] Danger = { "destroy", "crít", "crit", "grave", "severe", "rech", "reject", "fall", "error", "conflict", "alta", "high", "4", "5" };
-    static readonly string[] Success = { "valid", "cerr", "complet", "closed", "activo", "entreg", "applied", "consolid", "formaliz", "selected", "sí" };
-    static readonly string[] Warning = { "moder", "pend", "draft", "media", "en curso", "progress", "propos", "abiert", "3" };
+    static readonly string[] Danger = { "no disponible", "en corte", "agotad", "lleno", "destroy", "crít", "crit", "grave", "severe", "rech", "reject", "fall", "error", "conflict", "alta", "high", "4", "5" };
+    static readonly string[] Success = { "valid", "cerr", "complet", "closed", "activo", "entreg", "applied", "consolid", "formaliz", "selected", "disponible", "atendid", "recibid", "distribu", "aprob", "exitos", "normal", "sí" };
+    static readonly string[] Warning = { "moder", "pend", "draft", "media", "en curso", "progress", "propos", "abiert", "degrad", "verificaci", "tránsito", "parcial", "prueba", "reintent", "suspend", "3" };
 
     public static string Badge(string v)
     {
         var t = v.ToLowerInvariant();
         var kind = Danger.Any(t.Contains) ? "danger"
-                 : Success.Any(t.Contains) ? "success"
+                 : Success.Any(t.Contains) && !t.Contains("inactivo", StringComparison.Ordinal) ? "success"
                  : Warning.Any(t.Contains) ? "warning" : "secondary";
         return $"badge text-bg-{kind}";
     }
