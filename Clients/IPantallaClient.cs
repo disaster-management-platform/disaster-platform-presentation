@@ -15,12 +15,12 @@ public interface IPantallaClient
 public class FakePantallaClient : IPantallaClient
 {
     public bool Simulado => true;
-    public Task<IReadOnlyList<Row>?> FilasAsync(Screen s, Col[] cols, string? rowTo, string? id, int sub, CancellationToken ct)
+    public virtual Task<IReadOnlyList<Row>?> FilasAsync(Screen s, Col[] cols, string? rowTo, string? id, int sub, CancellationToken ct)
     {
         var count = s.Id == "REC-13" || (s.Id == "REC-05" && (sub == 0 || sub == 1)) ? 5 : 8;
         return Task.FromResult<IReadOnlyList<Row>?>(Mock.Rows(cols, rowTo, count).ToList());
     }
-    public Task<IReadOnlyDictionary<string, string>?> DetalleAsync(Screen s, string? id, CancellationToken ct) =>
+    public virtual Task<IReadOnlyDictionary<string, string>?> DetalleAsync(Screen s, string? id, CancellationToken ct) =>
         Task.FromResult<IReadOnlyDictionary<string, string>?>(null);
     public Task EnviarAsync(Screen s, string? dialog, IDictionary<string, string?> valores, Guid key, string? id, CancellationToken ct) =>
         Task.CompletedTask;

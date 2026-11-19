@@ -45,6 +45,106 @@
     border-color: var(--bs-primary);
 }
 
+.progress-bar {
+    background-color: #1f5fa8;
+}
+
+.table-scroll {
+    max-height: 28rem;
+    overflow: auto;
+}
+
+.table-scroll thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: var(--bs-table-bg, var(--bs-tertiary-bg));
+}
+
+.chart-canvas {
+    min-width: 0;
+    overflow-x: auto;
+}
+
+.chart-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.chart-svg--bars,
+.chart-svg--columns {
+    min-width: 48rem;
+}
+
+.chart-svg--pie {
+    min-width: 32rem;
+}
+
+.chart-grid {
+    stroke: var(--bs-border-color);
+    stroke-width: 1;
+}
+
+.chart-label {
+    fill: var(--bs-secondary-color);
+    font-size: 14px;
+}
+
+.chart-value {
+    fill: var(--bs-body-color);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.chart-center-total {
+    fill: var(--bs-body-color);
+    font-size: 24px;
+    font-weight: 600;
+    text-anchor: middle;
+}
+
+.chart-center-label {
+    fill: var(--bs-secondary-color);
+    font-size: 13px;
+    text-anchor: middle;
+}
+
+.chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+.chart-legend__item {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+}
+
+.chart-legend__item[aria-pressed="true"] {
+    border-color: var(--bs-secondary);
+    color: var(--bs-emphasis-color);
+}
+
+.chart-legend__swatch {
+    width: .75rem;
+    height: .75rem;
+    flex: none;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 2px;
+}
+
+.chart-color-0, .chart-swatch--0 { fill: #1f5fa8; background-color: #1f5fa8; }
+.chart-color-1, .chart-swatch--1 { fill: #c08410; background-color: #c08410; }
+.chart-color-2, .chart-swatch--2 { fill: #00918a; background-color: #00918a; }
+.chart-color-3, .chart-swatch--3 { fill: #c8553d; background-color: #c8553d; }
+.chart-color-4, .chart-swatch--4 { fill: #6a4fb0; background-color: #6a4fb0; }
+.chart-color-5, .chart-swatch--5 { fill: #4a8f2f; background-color: #4a8f2f; }
+.chart-color-6, .chart-swatch--6 { fill: #b0457a; background-color: #b0457a; }
+.chart-color-7, .chart-color-8, .chart-color-9,
+.chart-swatch--7, .chart-swatch--8, .chart-swatch--9 { fill: #7b8794; background-color: #7b8794; }
+
 .leaflet-container a {
     color: #555;
 }

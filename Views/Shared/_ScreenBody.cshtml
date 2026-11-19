@@ -74,10 +74,17 @@ else
             break;
     }
 
-    @for (var i = 0; i < s.Tables.Length; i++)
+    @if (!(s.Map && s.Kind == Kind.Detail))
     {
-        var t = s.Tables[i];
-        @await Html.PartialAsync("_Table", new TableVm(t.Title, t.Cols, t.RowTo, Array.Empty<Field>(), false) { Rows = Model.FilasSub.GetValueOrDefault(i) })
+        @for (var i = 0; i < s.Tables.Length; i++)
+        {
+            var t = s.Tables[i];
+            @await Html.PartialAsync("_Table", new TableVm(t.Title, t.Cols, t.RowTo, Array.Empty<Field>(), false) { Rows = Model.FilasSub.GetValueOrDefault(i) })
+        }
+    }
+    @if (s.Map)
+    {
+        <partial name="_ScreenChart" model="Model" />
     }
 
     <partial name="_Dialogs" model="Model" />

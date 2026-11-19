@@ -27,12 +27,12 @@
             </div>
         </div>
     }
-    <div class="table-responsive">
+    <div class="table-responsive @(rows.Length > 6 ? "table-scroll" : null)">
         <table class="table table-hover align-middle mb-0" data-selectable="@(Model.Selectable ? "true" : null)">
             <thead class="table-light">
                 <tr>
                     @if (Model.Selectable) { <th scope="col" class="text-center"><input type="checkbox" class="form-check-input m-0" data-select-all aria-label="Seleccionar todas las propuestas" /></th> }
-                    @foreach (var c in Model.Cols) { <th>@c.Label</th> }
+                    @foreach (var c in Model.Cols) { <th scope="col">@c.Label</th> }
                 </tr>
             </thead>
             <tbody>
