@@ -3,6 +3,7 @@ using disaster_platform_web.Areas.Desastres.Clients;
 using disaster_platform_web.Areas.Organizaciones.Clients;
 using disaster_platform_web.Areas.Personas.Clients;
 using disaster_platform_web.Areas.Reconstruccion.Clients;
+using disaster_platform_web.Areas.Recursos.Clients;
 using disaster_platform_web.Clients;
 using Microsoft.Extensions.Options;
 
@@ -36,6 +37,7 @@ Registrar<IReconstruccionClient, FakeReconstruccionClient, ReconstruccionClient>
 // Eden se consume solo a través del Integration Service
 Registrar<IPersonasClient, FakePersonasClient, PersonasClient>(o => o.IntegrationUrl);
 Registrar<IOrganizacionesClient, FakeOrganizacionesClient, OrganizacionesClient>(o => o.IntegrationUrl);
+Registrar<IRecursosClient, FakeRecursosClient, RecursosClient>(o => o.IntegrationUrl);
 
 var app = builder.Build();
 

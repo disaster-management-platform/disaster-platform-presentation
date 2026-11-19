@@ -27,11 +27,12 @@
 }
 @if (s.Chart)
 {
-    var max = Mock.Bars.Max(b => b.Count);
+    var bars = Mock.BarsFor(s);
+    var max = bars.Max(b => b.Count);
     <div class="card mb-4">
         <div class="card-header fw-semibold">@(s.ChartTitle ?? "Resumen")</div>
         <div class="card-body">
-            @foreach (var b in Mock.Bars)
+            @foreach (var b in bars)
             {
                 <div class="mb-2">
                     <div class="d-flex justify-content-between small"><span>@b.Zone</span><span>@b.Count</span></div>

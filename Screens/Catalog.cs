@@ -104,7 +104,8 @@ public static class Catalog
     static List<Screen> Build()
     {
         const string AUT = "Autenticación", HOM = "Inicio", DIS = "Gestión de desastres", DAM = "Evaluación de daños",
-                     PEO = "Personas afectadas", ORG = "Coordinación de organizaciones", REC = "Reconstrucción";
+                     PEO = "Personas afectadas", ORG = "Coordinación de organizaciones", REC = "Reconstrucción",
+                     RES = "Gestión de recursos";
 
         Screen M(string id, string mod, string title, string route, Kind k, char st, string api) =>
             new()
@@ -132,6 +133,10 @@ public static class Catalog
         const string estTarea = "Pendiente|En curso|Completada";
         const string estProy = "Draft|Formalized|Monitoring|Closed";
         const string canales = "SMS|Correo|Push";
+        const string categoriasRecursos = "Alimentos|Agua|Medicamentos|Vehículos|Maquinaria|Equipos de rescate|Personal|Refugios|Donaciones";
+        const string unidadesRecursos = "litros|kits|cajas|unidades|personas";
+        const string estadosRecursos = "Disponible|Asignado parcialmente|Agotado|En tránsito";
+        const string bodegas = "Bodega Armenia|Bodega Cali|Bodega Manizales|Bodega Quibdó";
 
         // Columnas reutilizadas
         var disCols = new[]
@@ -171,6 +176,17 @@ public static class Catalog
             C("channel", "Canal", CT.Badge, canales),
             C("occurredAt", "Fecha", CT.Date),
             C("status", "Estado", CT.Badge, "Entregada|Pendiente|Fallida|Entregada"),
+        };
+        var solicitudesRecursosCols = new[]
+        {
+            C("codigo", "Solicitud", s: "SOL-0101|SOL-0102|SOL-0103"),
+            C("desastre", "Desastre", s: desastres),
+            C("solicitante", "Solicitante", s: orgs),
+            C("recurso", "Recurso", s: "Agua potable|Carpas|Medicamentos|Camión cisterna"),
+            C("solicitada", "Solicitada", CT.Number), C("asignada", "Asignada", CT.Number),
+            C("prioridad", "Prioridad", CT.Badge, prios),
+            C("estado", "Estado", CT.Badge, "Pendiente|Aprobada|Asignada|Entregada|Rechazada"),
+            C("fecha", "Fecha", CT.Date),
         };
         var activityDlg = new[]
         {
@@ -697,6 +713,119 @@ public static class Catalog
                             C("status", "Estado", CT.Badge, "Completed"), C("reportes", "Reportes", CT.Number), C("evidencias", "Evidencias", CT.Number))],
                 Dialogs = [D("cerrar", "Cerrar proyecto", "Cerrar proyecto")],
                 Links = [L("Proyecto", "REC-05")],
+            },
+
+            // ===== 8. Gestión de recursos =====
+            M("RES-01", RES, "Resumen de recursos", "Recursos", Kind.Dashboard, 'E',
+              "E GET /api/recursos/resumen?disasterId={id}") with
+            {
+                Intro = "Disponibilidad consolidada de recursos y solicitudes pendientes de atender.",
+                Stats = [S("Recursos registrados", "486"), S("Disponibles", "312"), S("Asignados", "151"), S("Solicitudes pendientes", "14")],
+                Chart = true, ChartTitle = "Disponibilidad por categoría",
+                TableTitle = "Solicitudes pendientes",
+                Cols = solicitudesRecursosCols,
+                Links =
+                [
+                    L("Solicitar recurso", "RES-04", true), L("Inventario", "RES-02"),
+                    L("Solicitudes y asignaciones", "RES-05"), L("Donaciones", "RES-06"), L("Refugios", "PEO-07"),
+                ],
+            },
+            M("RES-02", RES, "Inventario de recursos", "Recursos/Inventario", Kind.List, 'E',
+              "E GET/POST /api/recursos?disasterId={id}") with
+            {
+                Cols =
+                [
+                    C("nombre", "Recurso", s: "Agua potable embotellada|Kit de alimentos|Antibiótico genérico|Camión cisterna|Retroexcavadora|Equipo de rescate USAR|Brigadista|Carpa familiar"),
+                    C("categoria", "Categoría", s: categoriasRecursos), C("disponible", "Disponible", CT.Number),
+                    C("unidad", "Unidad", s: unidadesRecursos),
+                    C("ubicacion", "Ubicación", s: "Bodega Armenia|Bodega Cali|Hospital San Juan de Dios|Base Bomberos Manizales"),
+                    C("organizacion", "Propietario", s: orgs), C("estado", "Estado", CT.Badge, estadosRecursos),
+                    C("actualizado", "Actualizado", CT.Date),
+                ],
+                RowTo = "RES-03",
+                Filters =
+                [
+                    F("categoria", "Categoría", o: categoriasRecursos), F("estado", "Estado", o: estadosRecursos),
+                    F("ubicacion", "Ubicación", o: "Bodega Armenia|Bodega Cali|Hospital San Juan de Dios|Base Bomberos Manizales"),
+                ],
+                Dialogs =
+                [
+                    D("crear", "Registrar recurso", "Registrar recurso",
+                      F("nombre", "Nombre", req: true), F("categoria", "Categoría", FT.Select, req: true, o: categoriasRecursos),
+                      F("cantidad", "Cantidad", FT.Number, req: true, min: 0), F("unidad", "Unidad", FT.Select, req: true, o: unidadesRecursos),
+                      F("ubicacion", "Ubicación", req: true),
+                      F("organizacion", "Organización propietaria", FT.Select, o: orgs),
+                      F("observaciones", "Observaciones", FT.TextArea)),
+                ],
+                Links = [L("Solicitar recurso", "RES-04", true)],
+            },
+            M("RES-03", RES, "Detalle de recurso", "Recursos/Inventario/{id:guid}", Kind.Detail, 'E',
+              "E GET /api/recursos/{id}") with
+            {
+                Cols =
+                [
+                    C("nombre", "Recurso", s: "Agua potable embotellada"), C("categoria", "Categoría", s: "Agua"),
+                    C("disponible", "Disponible", CT.Number), C("unidad", "Unidad", s: "litros"),
+                    C("ubicacion", "Ubicación", s: "Bodega Armenia"), C("organizacion", "Propietario", s: "Defensa Civil"),
+                    C("estado", "Estado", CT.Badge, "Disponible"), C("actualizado", "Actualizado", CT.Date),
+                ],
+            },
+            M("RES-04", RES, "Solicitud de recursos", "Recursos/Solicitudes/Crear", Kind.Form, 'N',
+              "N POST /api/recursos/solicitudes con Idempotency-Key") with
+            {
+                Intro = "Los organismos autorizados solicitan recursos para atender un desastre.",
+                SaveTo = "RES-05", CancelTo = "RES-05",
+                Fields =
+                [
+                    F("disasterId", "Desastre", FT.Select, req: true, o: desastres),
+                    F("organizationId", "Organismo solicitante", FT.Select, req: true, o: orgs),
+                    F("categoria", "Categoría", FT.Select, req: true, o: categoriasRecursos),
+                    F("recurso", "Recurso o descripción", req: true, max: 200),
+                    F("cantidad", "Cantidad", FT.Number, req: true, min: 1),
+                    F("unidad", "Unidad", FT.Select, req: true, o: unidadesRecursos),
+                    F("prioridad", "Prioridad", FT.Select, req: true, o: prios),
+                    F("requeridoPara", "Fecha requerida", FT.DateTime, req: true),
+                    F("entrega", "Lugar de entrega", req: true, max: 200),
+                    F("justificacion", "Justificación", FT.TextArea, req: true, max: 1000),
+                ],
+            },
+            M("RES-05", RES, "Solicitudes y asignaciones", "Recursos/Solicitudes", Kind.List, 'N',
+              "N GET /api/recursos/solicitudes; PUT /api/recursos/solicitudes/{id}/asignacion") with
+            {
+                Cols = solicitudesRecursosCols,
+                Filters = [F("prioridad", "Prioridad", o: prios), F("estado", "Estado", o: "Pendiente|Aprobada|Asignada|Entregada|Rechazada")],
+                Dialogs =
+                [
+                    D("asignar", "Asignar recurso", "Asignar recurso",
+                      F("codigo", "Código de solicitud", req: true), F("recurso", "Recurso", req: true),
+                      F("cantidad", "Cantidad", FT.Number, req: true, min: 1),
+                      F("origen", "Bodega de origen", FT.Select, req: true, o: bodegas),
+                      F("observaciones", "Observaciones", FT.TextArea)),
+                    D("rechazar", "Rechazar solicitud", "Rechazar solicitud",
+                      F("codigo", "Código de solicitud", req: true),
+                      F("motivo", "Motivo", FT.TextArea, req: true, max: 1000)),
+                ],
+                Links = [L("Nueva solicitud", "RES-04", true), L("Inventario", "RES-02")],
+            },
+            M("RES-06", RES, "Donaciones", "Recursos/Donaciones", Kind.List, 'E',
+              "E GET/POST /api/recursos/donaciones") with
+            {
+                Optional = true,
+                Cols =
+                [
+                    C("donante", "Donante", s: "Fundación Éxito|Cámara de Comercio|Ciudadano anónimo"),
+                    C("tipo", "Tipo", CT.Badge, "Dinero|Alimentos|Medicamentos|Equipos"),
+                    C("descripcion", "Descripción", s: "Alimentos no perecederos|Aporte para kits familiares|Equipos de protección"),
+                    C("cantidad", "Cantidad", CT.Number), C("receptor", "Receptor", s: orgs), C("fecha", "Fecha", CT.Date),
+                    C("estado", "Estado", CT.Badge, "Recibida|En verificación|Distribuida"),
+                ],
+                Dialogs =
+                [
+                    D("registrar", "Registrar donación", "Registrar donación",
+                      F("donante", "Donante", req: true), F("tipo", "Tipo", FT.Select, req: true, o: "Dinero|Alimentos|Medicamentos|Equipos"),
+                      F("descripcion", "Descripción", req: true), F("cantidad", "Cantidad", FT.Number, req: true, min: 1),
+                      F("receptor", "Organización receptora", FT.Select, req: true, o: orgs)),
+                ],
             },
         };
     }

@@ -1,4 +1,7 @@
 @model TableVm
+@{
+    var rows = (Model.Rows ?? Mock.Rows(Model.Cols, Model.RowTo)).ToArray();
+}
 <div class="card mb-4 table-card">
     @if (Model.Title is not null) { <div class="card-header fw-semibold">@Model.Title</div> }
     @if (Model.Search || Model.Filters.Length > 0)
@@ -27,14 +30,21 @@
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light"><tr>@foreach (var c in Model.Cols) { <th>@c.Label</th> }</tr></thead>
             <tbody>
-                @foreach (var row in (Model.Rows ?? Mock.Rows(Model.Cols, Model.RowTo)))
+                @if (rows.Length == 0)
                 {
-                    <tr data-href="@row.Href" class="@(row.Href is null ? null : "clickable")">
-                        @foreach (var cell in row.Cells)
-                        {
-                            <td>@if (cell.Badge) { <span class="@Mock.Badge(cell.Text)">@cell.Text</span> } else { @cell.Text }</td>
-                        }
-                    </tr>
+                    <tr><td class="text-center text-muted py-4" colspan="@Math.Max(Model.Cols.Length, 1)">No hay registros para mostrar.</td></tr>
+                }
+                else
+                {
+                    @foreach (var row in rows)
+                    {
+                        <tr data-href="@row.Href" class="@(row.Href is null ? null : "clickable")">
+                            @foreach (var cell in row.Cells)
+                            {
+                                <td>@if (cell.Badge) { <span class="@Mock.Badge(cell.Text)">@cell.Text</span> } else { @cell.Text }</td>
+                            }
+                        </tr>
+                    }
                 }
             </tbody>
         </table>

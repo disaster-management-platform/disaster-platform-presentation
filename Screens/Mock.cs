@@ -21,6 +21,20 @@ public static class Mock
         ("Armenia", 420), ("Cali", 310), ("Manizales", 260), ("Quibdó", 150),
     };
 
+    public static (string Zone, int Count)[] BarsFor(Screen screen) => screen.Id switch
+    {
+        "RES-01" =>
+        [
+            ("Agua", 112), ("Alimentos", 86), ("Medicamentos", 58), ("Vehículos", 34),
+            ("Maquinaria", 22), ("Equipos de rescate", 19), ("Personal", 151), ("Refugios", 4),
+        ],
+        "DAM-07" =>
+        [
+            ("Armenia", 6300), ("Calarcá", 4200), ("Cali", 5100), ("Manizales", 2800),
+        ],
+        _ => Bars
+    };
+
     public static string PointsJson(bool single) =>
         JsonSerializer.Serialize((single ? Points.Take(1) : Points)
             .Select(p => new { lat = p.Lat, lng = p.Lng, name = p.Name, sev = p.Sev }));
