@@ -21,6 +21,40 @@ if (mapEl && window.L) {
 document.querySelectorAll('tr[data-href]').forEach(tr =>
     tr.addEventListener('click', () => { location.href = tr.dataset.href; }));
 
+document.querySelectorAll('table[data-selectable="true"]').forEach(table => {
+    const rowChecks = [...table.querySelectorAll('[data-select-row]')];
+    const selectAll = table.querySelector('[data-select-all]');
+    const modal = document.querySelector('#dlg-proyectos');
+    const idsInput = modal?.querySelector('[data-selected-ids]');
+    const countLabel = modal?.querySelector('[data-selected-count]');
+    const launchButton = document.querySelector('[data-selection-launch="true"]');
+    const submitButton = modal?.querySelector('[data-selection-submit]');
+
+    const updateSelection = () => {
+        const selectable = rowChecks.filter(check => !check.disabled);
+        const selected = rowChecks.filter(check => check.checked && !check.disabled);
+        if (idsInput) idsInput.value = selected.map(check => check.value).filter(Boolean).join(',');
+        if (countLabel) countLabel.textContent = String(selected.length);
+        if (launchButton) launchButton.disabled = selected.length === 0;
+        if (submitButton) submitButton.disabled = selected.length === 0;
+        if (selectAll) {
+            selectAll.disabled = selectable.length === 0;
+            selectAll.checked = selectable.length > 0 && selected.length === selectable.length;
+            selectAll.indeterminate = selected.length > 0 && selected.length < selectable.length;
+        }
+    };
+
+    rowChecks.forEach(check => {
+        check.addEventListener('click', event => event.stopPropagation());
+        check.addEventListener('change', updateSelection);
+    });
+    selectAll?.addEventListener('change', () => {
+        rowChecks.forEach(check => { if (!check.disabled) check.checked = selectAll.checked; });
+        updateSelection();
+    });
+    updateSelection();
+});
+
 // Búsqueda y filtros de las tablas (en el navegador, sobre los datos ya renderizados)
 document.querySelectorAll('.table-card').forEach(card => {
     const rows = card.querySelectorAll('tbody tr');

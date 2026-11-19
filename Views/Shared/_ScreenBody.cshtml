@@ -25,7 +25,9 @@ else
             }
             @foreach (var d in s.Dialogs)
             {
-                <button type="button" class="btn btn-outline-primary px-3" data-bs-toggle="modal" data-bs-target="#dlg-@d.Id">@d.Label</button>
+                var isBulkProjects = s.Id == "REC-02" && d.Id == "proyectos";
+                <button type="button" class="btn btn-outline-primary px-3" data-bs-toggle="modal" data-bs-target="#dlg-@d.Id"
+                        disabled="@isBulkProjects" data-selection-launch="@(isBulkProjects ? "true" : null)">@d.Label</button>
             }
             @if (s.Print) { <button type="button" class="btn btn-outline-dark px-3" onclick="window.print()">Imprimir</button> }
         </div>
@@ -40,7 +42,7 @@ else
             <partial name="_ScreenDashboard" model="Model" />
             break;
         case Kind.List:
-            @await Html.PartialAsync("_Table", new TableVm(s.TableTitle, s.Cols, s.RowTo, s.Filters) { Rows = Model.Filas })
+            @await Html.PartialAsync("_Table", new TableVm(s.TableTitle, s.Cols, s.RowTo, s.Filters) { Rows = Model.Filas, Selectable = s.Selectable })
             break;
         case Kind.Detail:
             <partial name="_ScreenDetail" model="Model" />

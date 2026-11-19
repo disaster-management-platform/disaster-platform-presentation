@@ -24,6 +24,13 @@ public abstract class PantallaController(IPantallaClient api) : Controller
         {
             if (s.Kind == Kind.List || (s.Kind == Kind.Dashboard && s.Cols.Length > 0))
                 vm.Filas = await api.FilasAsync(s, s.Cols, s.RowTo, id, -1, ct);
+            if (s.Id == "REC-02" && vm.Filas is not null)
+                vm.Filas = vm.Filas
+                    .OrderBy(row => Celda(row, s, "zone"), StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(row => Celda(row, s, "assetType"), StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(row => RangoDanio(Celda(row, s, "damage")))
+                    .ThenBy(row => Celda(row, s, "damage"), StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
             for (var i = 0; i < s.Tables.Length; i++)
                 vm.FilasSub[i] = await api.FilasAsync(s, s.Tables[i].Cols, s.Tables[i].RowTo, id, i, ct) ?? [];
             if (s.Kind == Kind.Detail)
@@ -59,6 +66,22 @@ public abstract class PantallaController(IPantallaClient api) : Controller
         _ => 3
     };
 
+    static string Celda(Row row, Screen screen, string key)
+    {
+        var index = Array.FindIndex(screen.Cols, column => column.Key == key);
+        return index >= 0 && index < row.Cells.Length ? row.Cells[index].Text : "";
+    }
+
+    static int RangoDanio(string value) => value.ToLowerInvariant() switch
+    {
+        "none" or "sin daño" => 0,
+        "minor" or "leve" => 1,
+        "moderate" or "moderado" => 2,
+        "severe" or "grave" => 3,
+        "destroyed" or "destrucción total" => 4,
+        _ => 5
+    };
+
     protected async Task<IActionResult> Guardar(string sid, string? id, Dictionary<string, string?> values)
     {
         var s = Catalog.Get(sid);
@@ -83,6 +106,8 @@ public abstract class PantallaController(IPantallaClient api) : Controller
         var s = Catalog.Get(sid);
         var d = s.Dialogs.FirstOrDefault(x => x.Id == dialog);
         if (d is null) return NotFound();
+        if (sid == "REC-02" && dialog == "proyectos")
+            return await CrearProyectos(s, id, values);
         var errores = new Dictionary<string, string>();
         foreach (var f in d.Fields) Validar(errores, values, f);
         if (errores.Count > 0)
@@ -98,6 +123,40 @@ public abstract class PantallaController(IPantallaClient api) : Controller
                 TempData["Err"] = $"{d.Title}: {Mensaje(e)}";
             }
         return Redirect(Catalog.Url(sid, id));
+    }
+
+    async Task<IActionResult> CrearProyectos(Screen screen, string? id, Dictionary<string, string?> values)
+    {
+        var rawIds = values.GetValueOrDefault("ids") ?? "";
+        var proposalIds = rawIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        if (proposalIds.Length == 0 || proposalIds.Any(proposalId => !Guid.TryParse(proposalId, out _)))
+        {
+            TempData["Err"] = "Selecciona al menos una propuesta válida.";
+            return Redirect(Catalog.Url(screen.Id, id));
+        }
+
+        var creados = 0;
+        try
+        {
+            foreach (var proposalId in proposalIds)
+            {
+                var requestValues = new Dictionary<string, string?>(values, StringComparer.OrdinalIgnoreCase)
+                {
+                    ["ids"] = proposalId
+                };
+                await api.EnviarAsync(screen, "proyectos", requestValues, Guid.NewGuid(), proposalId, HttpContext.RequestAborted);
+                creados++;
+            }
+            TempData["Msg"] = $"{creados} proyectos creados.";
+        }
+        catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
+        {
+            TempData["Err"] = creados == 0
+                ? Mensaje(e)
+                : $"Se crearon {creados} de {proposalIds.Length} proyectos. {Mensaje(e)}";
+        }
+        return Redirect(Catalog.Url(screen.Id, id));
     }
 
     Guid Clave() => Guid.TryParse(Request.Form["Key"], out var k) ? k : Guid.NewGuid();

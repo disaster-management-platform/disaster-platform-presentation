@@ -697,7 +697,8 @@ public static class Catalog
               "GET /api/reconstruccion/propuestas y /proyectos?disasterId={id}. N mapa DAM-01") with
             {
                 Intro = "Consulta las propuestas, los proyectos en curso y los recursos destinados a la recuperación.",
-                Stats = [S("Propuestas", "24"), S("En ejecución", "9"), S("Cerrados", "3"), S("Presupuesto", "$ 12.400 M")],
+                Stats = [S("Propuestas", "24"), S("En formalización", "4"), S("En monitoreo", "9"), S("Cerrados", "3"),
+                         S("Presupuesto disponible de donaciones", "$ 12.400 M")],
                 Map = true, TableTitle = "Propuestas", RowTo = "REC-03",
                 Cols = [C("disaster", "Desastre", s: desastres), C("zone", "Zona", s: "Armenia|Calarcá|Cali|Manizales"),
                         C("assetType", "Activo", s: "Puente|Escuela|Hospital|Vivienda"), C("damage", "Daño", CT.Badge, "Destroyed|Severe|Severe|Moderate"),
@@ -708,13 +709,25 @@ public static class Catalog
             M("REC-02", REC, "Propuestas de reconstrucción", "Reconstruccion/Propuestas", Kind.List, 'A',
               "GET /api/reconstruccion/propuestas?disasterId={id}; POST .../propuestas/generar {disasterId}") with
             {
+                Intro = "Zona, activo y nivel de daño con su prioridad según el presupuesto disponible de donaciones. Selecciona las propuestas que se convertirán en proyectos.",
                 Stage = 1,
+                Selectable = true,
                 RowTo = "REC-03",
                 Cols = [C("zone", "Zona", s: "Armenia|Calarcá|Cali|Manizales"), C("assetType", "Activo", s: "Puente|Escuela|Hospital|Vivienda"),
                         C("damage", "Daño", CT.Badge, "Destroyed|Severe|Severe|Moderate"), C("priority", "Prioridad", CT.Badge, "High|Low|Unassigned|High"),
+                        C("resultado", "Resultado"),
                         C("proposedBudget", "Presupuesto", CT.Money), C("status", "Estado", CT.Badge, "Proposed|Selected|Proposed|Obsolete")],
-                Filters = [F("status", "Estado", o: "Proposed|Selected|Obsolete"), F("priority", "Prioridad", o: "High|Low|Unassigned")],
-                Dialogs = [D("generar", "Generar propuestas", "Generar propuestas", F("disasterId", "Desastre", FT.Select, req: true, o: desastres))],
+                Filters = [F("zone", "Zona", FT.Select, o: "Armenia|Calarcá|Cali|Manizales"),
+                           F("assetType", "Activo", FT.Select, o: "Puente|Escuela|Hospital|Vivienda"),
+                           F("damage", "Daño", FT.Select, o: danio),
+                           F("status", "Estado", FT.Select, o: "Proposed|Selected|Obsolete"),
+                           F("priority", "Prioridad", FT.Select, o: "High|Low|Unassigned")],
+                Dialogs =
+                [
+                    D("generar", "Generar propuestas", "Generar propuestas",
+                        F("disasterId", "Desastre", FT.Select, req: true, hint: "Solo desastres en estado Reconstrucción", o: desastres)),
+                    D("proyectos", "Crear proyectos", "Crear proyectos"),
+                ],
             },
             M("REC-03", REC, "Detalle de propuesta", "Reconstruccion/Propuestas/{id:guid}", Kind.Detail, 'A',
               "Localizar el id en GET /api/reconstruccion/propuestas (no hay GET individual); POST /api/reconstruccion/proyectos") with
@@ -722,7 +735,10 @@ public static class Catalog
                 Stage = 1,
                 Cols = [C("zone", "Zona", s: "Calarcá"), C("assetType", "Activo", s: "Puente"), C("damage", "Daño", CT.Badge, "Destroyed"),
                         C("assessmentCount", "Evaluaciones", CT.Number), C("proposedBudget", "Presupuesto", CT.Money),
+                        C("availableBudget", "Presupuesto disponible (donaciones)", CT.Money, "$ 8.400 M"),
+                        C("coversBudget", "Cubre el presupuesto propuesto", CT.Badge, "Sí"),
                         C("averageSeverity", "Severidad media", s: "4,2"), C("priority", "Prioridad", CT.Badge, "High"),
+                        C("resultado", "Resultado", s: "Se prioriza proyecto"),
                         C("status", "Estado", CT.Badge, "Proposed"), C("version", "Versión", CT.Number)],
                 Tables = [T("Evaluaciones origen", "DAM-03", C("assetId", "Activo", s: "PUENTE-014|PUENTE-015"), C("damageLevel", "Daño", CT.Badge, "Destroyed|Severe"),
                             C("evaluator", "Evaluador", s: "L. Ramírez|M. Torres"), C("budget", "Presupuesto", CT.Money), C("revision", "Rev.", CT.Number))],

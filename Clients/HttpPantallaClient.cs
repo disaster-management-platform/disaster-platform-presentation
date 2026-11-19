@@ -30,9 +30,17 @@ public abstract class HttpPantallaClient(HttpClient http) : IPantallaClient
         var ruta = Ruta(s, "GET", id);
         if (ruta is null) return [];
         var items = await http.GetFromJsonAsync<List<Dictionary<string, JsonElement>>>(ruta, ct) ?? [];
-        return items.Select(it => new Row(
-            rowTo is null || !it.TryGetValue("id", out var rid) ? null : Catalog.Url(rowTo, rid.ToString()),
-            cols.Select(c => (Texto(it, c.Key), c.Type == CT.Badge)).ToArray())).ToList();
+        return items.Select(it =>
+        {
+            var idKey = it.Keys.FirstOrDefault(key => key.Equals("id", StringComparison.OrdinalIgnoreCase));
+            var recordId = idKey is null ? null : it[idKey].ToString();
+            if (string.IsNullOrWhiteSpace(recordId)) recordId = null;
+            var priority = s.Id == "REC-02" ? Texto(it, "priority") : null;
+            return new Row(
+                rowTo is null || recordId is null ? null : Catalog.Url(rowTo, recordId),
+                cols.Select(c => (c.Key == "resultado" && s.Id == "REC-02" ? Mock.Resultado(priority) : Texto(it, c.Key), c.Type == CT.Badge)).ToArray(),
+                recordId);
+        }).ToList();
     }
 
     public async Task<IReadOnlyDictionary<string, string>?> DetalleAsync(Screen s, string? id, CancellationToken ct)

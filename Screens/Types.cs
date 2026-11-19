@@ -48,6 +48,7 @@ public record Screen
     public string? CancelTo { get; init; }
     public bool Map { get; init; }
     public bool Chart { get; init; }
+    public bool Selectable { get; init; }
     public bool Optional { get; init; }
     public bool Print { get; init; }
     public char State { get; init; } = 'N';
@@ -58,6 +59,7 @@ public record Screen
 public record TableVm(string? Title, Col[] Cols, string? RowTo, Field[] Filters, bool Search = true)
 {
     public IEnumerable<Row>? Rows { get; init; }
+    public bool Selectable { get; init; }
 }
 public record FieldVm(Field F, string? Value, string? Error, string Prefix);
-public record Row(string? Href, (string Text, bool Badge)[] Cells);
+public record Row(string? Href, (string Text, bool Badge)[] Cells, string? Id = null);

@@ -53,11 +53,30 @@ public static class Mock
 
     public static IEnumerable<Row> Rows(Col[] cols, string? rowTo, int n = 8)
     {
+        var priority = cols.FirstOrDefault(c => c.Key == "priority");
         for (var i = 0; i < n; i++)
+        {
+            var cells = cols.Select(c =>
+            {
+                var text = c.Key == "resultado" && priority is not null
+                    ? Resultado(Cell(priority, i))
+                    : Cell(c, i);
+                return (text, c.Type == CT.Badge);
+            }).ToArray();
             yield return new Row(
                 rowTo is null ? null : Catalog.RowUrl(rowTo, i),
-                cols.Select(c => (Cell(c, i), c.Type == CT.Badge)).ToArray());
+                cells,
+                new Guid(i + 1, 0, 0, new byte[8]).ToString());
+        }
     }
+
+    public static string Resultado(string? priority) => priority?.ToLowerInvariant() switch
+    {
+        "high" => "Se prioriza proyecto",
+        "low" => "Se propone proyecto",
+        "unassigned" => "Se propone proyecto (presupuesto no asignado)",
+        _ => ""
+    };
 
     static readonly string[] Danger = { "no disponible", "en corte", "agotad", "lleno", "destroy", "crít", "crit", "grave", "severe", "rech", "reject", "fall", "error", "conflict", "alta", "high", "4", "5" };
     static readonly string[] Success = { "valid", "cerr", "complet", "closed", "activo", "entreg", "applied", "consolid", "formaliz", "selected", "disponible", "atendid", "recibid", "distribu", "aprob", "exitos", "normal", "sí" };

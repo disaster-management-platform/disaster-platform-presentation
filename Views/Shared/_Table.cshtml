@@ -1,6 +1,7 @@
 @model TableVm
 @{
     var rows = (Model.Rows ?? Mock.Rows(Model.Cols, Model.RowTo)).ToArray();
+    var statusIndex = Array.FindIndex(Model.Cols, c => c.Key == "status");
 }
 <div class="card mb-4 table-card">
     @if (Model.Title is not null) { <div class="card-header fw-semibold">@Model.Title</div> }
@@ -27,18 +28,33 @@
         </div>
     }
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light"><tr>@foreach (var c in Model.Cols) { <th>@c.Label</th> }</tr></thead>
+        <table class="table table-hover align-middle mb-0" data-selectable="@(Model.Selectable ? "true" : null)">
+            <thead class="table-light">
+                <tr>
+                    @if (Model.Selectable) { <th scope="col" class="text-center"><input type="checkbox" class="form-check-input m-0" data-select-all aria-label="Seleccionar todas las propuestas" /></th> }
+                    @foreach (var c in Model.Cols) { <th>@c.Label</th> }
+                </tr>
+            </thead>
             <tbody>
                 @if (rows.Length == 0)
                 {
-                    <tr><td class="text-center text-muted py-4" colspan="@Math.Max(Model.Cols.Length, 1)">No hay registros para mostrar.</td></tr>
+                    <tr><td class="text-center text-muted py-4" colspan="@Math.Max(Model.Cols.Length + (Model.Selectable ? 1 : 0), 1)">No hay registros para mostrar.</td></tr>
                 }
                 else
                 {
                     @foreach (var row in rows)
                     {
                         <tr data-href="@row.Href" class="@(row.Href is null ? null : "clickable")">
+                            @if (Model.Selectable)
+                            {
+                                var status = statusIndex >= 0 && statusIndex < row.Cells.Length ? row.Cells[statusIndex].Text : "";
+                                var disabled = row.Id is null || status.Equals("Selected", StringComparison.OrdinalIgnoreCase)
+                                    || status.Equals("Obsolete", StringComparison.OrdinalIgnoreCase);
+                                <td class="text-center">
+                                    <input type="checkbox" class="form-check-input m-0" value="@row.Id" data-select-row
+                                           disabled="@disabled" aria-label="Seleccionar propuesta" />
+                                </td>
+                            }
                             @foreach (var cell in row.Cells)
                             {
                                 <td>@if (cell.Badge) { <span class="@Mock.Badge(cell.Text)">@Etiquetas.Es(cell.Text)</span> } else { @Etiquetas.Es(cell.Text) }</td>
