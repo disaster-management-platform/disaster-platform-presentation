@@ -137,6 +137,7 @@ public static class Catalog
         const string unidadesRecursos = "litros|kits|cajas|unidades|personas";
         const string estadosRecursos = "Disponible|Asignado parcialmente|Agotado|En tránsito";
         const string bodegas = "Bodega Armenia|Bodega Cali|Bodega Manizales|Bodega Quibdó";
+        const string nivelesAtencion = "Nivel_1 — Bajo|Nivel_2 — Medio|Nivel_3 — Alto|Nivel_4 — Crítico";
 
         // Columnas reutilizadas
         var disCols = new[]
@@ -239,7 +240,7 @@ public static class Catalog
                 Filters = [F("tipo", "Tipo", o: "Terremoto|Inundación|Deslizamiento|Incendio"),
                            F("phase", "Fase", o: fases), F("ubicacion", "Zona", o: "Armenia|Cali|Manizales|Quibdó")],
                 Links = [L("Registrar desastre", "DIS-04", true), L("Listado", "DIS-02"),
-                         L("Fuentes", "DIS-05"), L("Organismos", "DIS-06"), L("Alertas", "DIS-07")],
+                         L("Fuentes", "DIS-05"), L("Organismos", "DIS-06"), L("Alertas", "DIS-07"), L("Evolución", "DIS-08")],
             },
             M("DIS-02", DIS, "Listado de desastres", "Desastres/Lista", Kind.List, 'A', "GET /api/desastres. No enviar query params no soportados") with
             {
@@ -276,7 +277,7 @@ public static class Catalog
                     D("geo", "Actualizar geometría", "Actualizar geometría",
                       F("geometria", "GeoJSON (Polygon o MultiPolygon)", FT.TextArea, req: true, hint: "Coordenadas [longitud, latitud]")),
                 ],
-                Links = [L("Daños", "DAM-01"), L("Personas", "PEO-01"), L("Reconstrucción", "REC-01"),
+                Links = [L("Daños", "DAM-01"), L("Personas", "PEO-01"), L("Reconstrucción", "REC-01"), L("Evolución", "DIS-08"),
                          L("Fuentes", "DIS-05"), L("Organismos", "DIS-06"), L("Alertas", "DIS-07")],
             },
             M("DIS-04", DIS, "Registro de desastre", "Desastres/Crear", Kind.Form, 'A',
@@ -327,6 +328,47 @@ public static class Catalog
                 Dialogs = [D("nueva", "Nueva alerta", "Nueva alerta", F("subject", "Asunto", req: true), F("message", "Mensaje", FT.TextArea, req: true),
                                 F("recipientIds", "Destinatarios", req: true, hint: "Separados por coma"))],
             },
+            M("DIS-08", DIS, "Evolución del evento", "Desastres/{id:int}/Evolucion", Kind.Dashboard, 'N',
+              "N GET /api/desastres/{id}/evolucion; POST .../area; PUT .../nivel") with
+            {
+                Intro = "Cómo ha cambiado el área afectada, el nivel de atención y el estado del evento.",
+                Stats =
+                [
+                    S("Nivel de atención actual", "Nivel_3 — Alto"), S("Estado", "En atención"),
+                    S("Zonas afectadas", "7 barrios"), S("Versiones del área", "4"),
+                ],
+                Map = true,
+                TableTitle = "Historial del área afectada",
+                Cols =
+                [
+                    C("registradoAt", "Fecha y hora", CT.Date), C("zonas", "Zonas afectadas", s: "3 barrios|5 barrios|7 barrios"),
+                    C("fuente", "Fuente", s: "Sistema GIS|Evaluación de campo|Organismo"),
+                    C("registradoPor", "Registrado por", s: "j.pardo|m.torres"),
+                    C("motivo", "Motivo", s: "Estimación inicial|Nueva evaluación|Réplica"),
+                ],
+                Tables =
+                [
+                    T("Línea de tiempo", null, C("occurredAt", "Fecha", CT.Date),
+                      C("evento", "Evento", s: "Estado|Nivel de atención|Área afectada"),
+                      C("antes", "Antes", s: "Registrado|Nivel_1|3 barrios"),
+                      C("despues", "Después", s: "En atención|Nivel_3|7 barrios"),
+                      C("actor", "Responsable", s: "j.pardo|m.torres"),
+                      C("motivo", "Motivo", s: "Nueva evaluación|Réplica|Ampliación de área")),
+                ],
+                Dialogs =
+                [
+                    D("area", "Actualizar área afectada", "Actualizar área afectada",
+                      F("descripcion", "Descripción de zonas", req: true),
+                      F("cantidad", "Cantidad de zonas", FT.Number, min: 0),
+                      F("geometria", "Geometría", FT.TextArea, hint: "Opcional"),
+                      F("fuente", "Fuente", FT.Select, o: "Sistema GIS|Evaluación de campo|Organismo"),
+                      F("motivo", "Motivo", FT.TextArea, req: true)),
+                    D("nivel", "Cambiar nivel de atención", "Cambiar nivel de atención",
+                      F("nivel", "Nivel de atención", FT.Select, req: true, o: nivelesAtencion),
+                      F("motivo", "Motivo", FT.TextArea, req: true)),
+                ],
+                Links = [L("Detalle del desastre", "DIS-03"), L("Alertas", "DIS-07")],
+            },
 
             // ===== 4. Evaluación de daños =====
             M("DAM-01", DAM, "Resumen de daños", "Danos", Kind.Dashboard, 'N', "N GET /api/evaluaciones/mapa?disasterId={id}; GET /api/evaluaciones?disasterId={id}") with
@@ -341,7 +383,8 @@ public static class Catalog
                 RowTo = "DAM-03",
                 Filters = [F("disaster", "Desastre", o: desastres), F("assetType", "Tipo", o: "Puente|Escuela|Hospital|Vivienda"),
                            F("status", "Estado", o: "Validated|Draft|Rejected")],
-                Links = [L("Nueva evaluación", "DAM-04", true), L("Listado", "DAM-02"), L("Sincronización", "DAM-05")],
+                Links = [L("Nueva evaluación", "DAM-04", true), L("Listado", "DAM-02"), L("Sincronización", "DAM-05"),
+                         L("Validación", "DAM-06"), L("Priorización", "DAM-07")],
             },
             M("DAM-02", DAM, "Listado de evaluaciones", "Danos/Lista", Kind.List, 'N',
               "GET /api/evaluaciones?disasterId={id}. Respuesta {schemaVersion:1, disasterId, evaluations[]}") with
@@ -404,6 +447,57 @@ public static class Catalog
                         C("error", "Error", s: "|Revisión desactualizada|Activo sin identificador|")],
                 Filters = [F("status", "Estado", o: "Applied|Conflict|Error")],
                 Dialogs = [D("resolver", "Resolver conflicto", "Resolver conflicto", F("reason", "Motivo de la resolución", FT.TextArea, req: true))],
+            },
+            M("DAM-06", DAM, "Validación de evaluaciones", "Danos/Validacion", Kind.List, 'N',
+              "N GET /api/evaluaciones?estado=Draft; PUT /api/evaluaciones/{id}/validacion") with
+            {
+                Intro = "Revisa evaluaciones pendientes, valida, rechaza o fusiona duplicados.",
+                Cols =
+                [
+                    evalCols.Single(c => c.Key == "assetId"), evalCols.Single(c => c.Key == "assetType"),
+                    evalCols.Single(c => c.Key == "location"), evalCols.Single(c => c.Key == "evaluator"),
+                    evalCols.Single(c => c.Key == "damageLevel"),
+                    C("duplicate", "Posible duplicado", CT.Badge, "Sí|No|No"),
+                    C("status", "Estado", CT.Badge, "Pendiente de validación|Validada|Rechazada"),
+                    evalCols.Single(c => c.Key == "evaluatedAt"),
+                ],
+                RowTo = "DAM-03",
+                Filters =
+                [
+                    F("status", "Estado", o: "Pendiente de validación|Validada|Rechazada"),
+                    F("duplicate", "Posible duplicado", o: "Sí|No"),
+                ],
+                Dialogs =
+                [
+                    D("validar", "Validar evaluación", "Validar evaluación",
+                      F("assetId", "Activo", req: true), F("comentario", "Comentario", FT.TextArea)),
+                    D("rechazar", "Rechazar evaluación", "Rechazar evaluación",
+                      F("assetId", "Activo", req: true), F("motivo", "Motivo", FT.TextArea, req: true)),
+                    D("duplicado", "Marcar como duplicado", "Marcar como duplicado",
+                      F("evaluacionDuplicada", "Evaluación duplicada", req: true),
+                      F("evaluacionOriginal", "Evaluación original", req: true),
+                      F("motivo", "Motivo", FT.TextArea, req: true)),
+                ],
+            },
+            M("DAM-07", DAM, "Priorización e impacto", "Danos/Priorizacion", Kind.Dashboard, 'N',
+              "N GET /api/evaluaciones/priorizacion?disasterId={id}") with
+            {
+                Intro = "Zonas y activos que requieren atención primero, con el costo estimado de recuperación.",
+                Stats =
+                [
+                    S("Activos destruidos", "42"), S("Daño grave", "118"),
+                    S("Costo estimado", "$ 18.400 millones"), S("Zonas críticas", "5"),
+                ],
+                Map = true, Chart = true, ChartTitle = "Costo estimado por zona (millones COP)",
+                TableTitle = "Zonas priorizadas",
+                Cols =
+                [
+                    C("zona", "Zona", s: "Armenia|Calarcá|Cali|Manizales"),
+                    C("activos", "Activos afectados", CT.Number), C("graves", "Graves o destruidos", CT.Number),
+                    C("personas", "Personas afectadas", CT.Number), C("costo", "Costo estimado", CT.Money),
+                    C("prioridad", "Prioridad", CT.Badge, prios),
+                ],
+                Links = [L("Crear propuesta de reconstrucción", "REC-02", true), L("Listado de evaluaciones", "DAM-02")],
             },
 
             // ===== 5. Personas afectadas =====

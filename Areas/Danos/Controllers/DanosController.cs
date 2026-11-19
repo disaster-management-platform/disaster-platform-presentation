@@ -30,4 +30,13 @@ public class DanosController(IDanosClient api) : PantallaController(api)
 
     [HttpPost("Danos/Sincronizacion/Accion/{dialog}"), ValidateAntiForgeryToken]
     public Task<IActionResult> Dam05Accion(string dialog, [Bind(Prefix = "Values")] Dictionary<string, string?> values) => Accion("DAM-05", null, dialog, values);
+
+    [HttpGet("Danos/Validacion")]
+    public Task<IActionResult> Dam06() => Ver("DAM-06", null);
+
+    [HttpPost("Danos/Validacion/Accion/{dialog}"), ValidateAntiForgeryToken]
+    public Task<IActionResult> Dam06Accion(string dialog, [Bind(Prefix = "Values")] Dictionary<string, string?> values) => Accion("DAM-06", null, dialog, values);
+
+    [HttpGet("Danos/Priorizacion")]
+    public Task<IActionResult> Dam07() => Ver("DAM-07", null);
 }
