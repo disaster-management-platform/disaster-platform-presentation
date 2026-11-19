@@ -44,7 +44,7 @@
             <div class="d-flex align-items-center gap-3 text-light small">
                 @if (!string.IsNullOrEmpty(disasterId))
                 {
-                    <span class="badge text-bg-info">Desastre @disasterId</span>
+                    <span class="badge text-bg-secondary">Desastre @disasterId</span>
                 }
                 <span>@(User.Identity?.Name ?? "Sin sesión")@(User.FindFirst("organization")?.Value is { } org ? " · " + org : "")</span>
                 <form method="post" action="/Cuenta/Salir" class="m-0">

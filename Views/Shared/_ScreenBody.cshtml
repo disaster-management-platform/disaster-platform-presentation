@@ -1,6 +1,7 @@
 @model PantallaVm
 @{
     var s = Model.Screen;
+    var hasActions = s.Links.Length > 0 || s.Dialogs.Length > 0 || s.Print;
 }
 @if (s.Kind == Kind.Auth)
 {
@@ -9,6 +10,21 @@
 else
 {
     <partial name="_PageHeader" model="Model" />
+
+    @if (hasActions)
+    {
+        <div class="d-flex flex-wrap gap-2 mb-4 no-print">
+            @foreach (var l in s.Links)
+            {
+                <a class="@("btn px-3 " + (l.Primary ? "btn-primary" : "btn-outline-secondary"))" href="@Catalog.Url(l.To, Model.RouteId)">@l.Label</a>
+            }
+            @foreach (var d in s.Dialogs)
+            {
+                <button type="button" class="btn btn-outline-primary px-3" data-bs-toggle="modal" data-bs-target="#dlg-@d.Id">@d.Label</button>
+            }
+            @if (s.Print) { <button type="button" class="btn btn-outline-dark px-3" onclick="window.print()">Imprimir</button> }
+        </div>
+    }
 
     @if (Model.Flash is not null) { <div class="alert alert-success">@Model.Flash</div> }
     @if (Model.FlashError is not null) { <div class="alert alert-danger">@Model.FlashError</div> }

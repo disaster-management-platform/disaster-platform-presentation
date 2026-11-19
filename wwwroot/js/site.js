@@ -6,7 +6,7 @@ if (mapEl && window.L) {
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 18, attribution: '&copy; OpenStreetMap'
     }).addTo(map);
-    const color = s => (s >= 4 ? '#dc3545' : s === 3 ? '#fd7e14' : '#0d6efd');
+    const color = s => (s >= 4 ? '#dc3545' : s === 3 ? '#fd7e14' : '#555555');
     const bounds = [];
     pts.forEach(p => {
         L.circleMarker([p.lat, p.lng], { radius: 6 + p.sev * 2, color: color(p.sev), fillOpacity: 0.5 })
