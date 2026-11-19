@@ -19,7 +19,7 @@
                     <div class="col-md-3">
                         <select class="form-select form-select-sm" data-table-filter="@idx">
                             <option value="">@f.Label (todos)</option>
-                            @foreach (var o in f.Options ?? Array.Empty<string>()) { <option>@o</option> }
+                            @foreach (var o in f.Options ?? Array.Empty<string>()) { <option>@Etiquetas.Es(o)</option> }
                         </select>
                     </div>
                 }
@@ -41,7 +41,7 @@
                         <tr data-href="@row.Href" class="@(row.Href is null ? null : "clickable")">
                             @foreach (var cell in row.Cells)
                             {
-                                <td>@if (cell.Badge) { <span class="@Mock.Badge(cell.Text)">@cell.Text</span> } else { @cell.Text }</td>
+                                <td>@if (cell.Badge) { <span class="@Mock.Badge(cell.Text)">@Etiquetas.Es(cell.Text)</span> } else { @Etiquetas.Es(cell.Text) }</td>
                             }
                         </tr>
                     }

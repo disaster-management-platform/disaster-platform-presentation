@@ -774,7 +774,7 @@ public static class Catalog
             M("REC-08", REC, "Cronograma y actividades", "Reconstruccion/Proyectos/{id:guid}/Cronograma", Kind.List, 'A',
               "A GET P/monitoreo; E GET/POST P/actividades-operativas; PUT .../{activityId}") with
             {
-                TableTitle = "Actividades contractuales (.NET)",
+                TableTitle = "Actividades del cronograma",
                 Cols = projActCols,
                 Tables = [T("Actividades operativas", null, C("name", "Actividad", s: "Montaje de obra|Señalización"), C("statusId", "Estado", CT.Badge, estTarea),
                             C("startsAt", "Inicio", CT.Date), C("endsAt", "Fin", CT.Date), C("contactPersonId", "Contacto", s: "A. Vargas"))],

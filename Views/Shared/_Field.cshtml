@@ -32,7 +32,7 @@
                     <option value="">Seleccione…</option>
                     @foreach (var o in f.Options ?? Array.Empty<string>())
                     {
-                        <option value="@o" selected="@(o == v)">@o</option>
+                        <option value="@o" selected="@(o == v)">@Etiquetas.Es(o)</option>
                     }
                 </select>
                 break;

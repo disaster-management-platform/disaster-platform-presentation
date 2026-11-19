@@ -12,7 +12,7 @@
                     var v = Model.Detalle?.GetValueOrDefault(c.Key) ?? Mock.Cell(c, 0);
                     <dt class="col-sm-4 text-muted">@c.Label</dt>
                     <dd class="col-sm-8">
-                        @if (c.Type == CT.Badge) { <span class="@Mock.Badge(v)">@v</span> } else { @v }
+                        @if (c.Type == CT.Badge) { <span class="@Mock.Badge(v)">@Etiquetas.Es(v)</span> } else { @Etiquetas.Es(v) }
                     </dd>
                 }
             </dl>
