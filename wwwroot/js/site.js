@@ -6,7 +6,7 @@ if (mapEl && window.L) {
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 18, attribution: '&copy; OpenStreetMap'
     }).addTo(map);
-    const color = s => (s >= 4 ? '#dc3545' : s === 3 ? '#fd7e14' : '#555555');
+    const color = s => (s >= 4 ? '#dc3545' : s === 3 ? '#fd7e14' : '#1f5fa8');
     const bounds = [];
     pts.forEach(p => {
         L.circleMarker([p.lat, p.lng], { radius: 6 + p.sev * 2, color: color(p.sev), fillOpacity: 0.5 })
@@ -18,7 +18,15 @@ if (mapEl && window.L) {
 }
 
 document.querySelectorAll('[data-interactive-chart]').forEach(root => {
-    const values = JSON.parse(root.dataset.chartValues || '[]');
+    const sourceValues = JSON.parse(root.dataset.chartValues || '[]');
+    const rankedValues = [...sourceValues].sort((left, right) => right.value - left.value);
+    const values = sourceValues.length > 7
+        ? [
+            ...rankedValues.slice(0, 7),
+            { label: 'Otros', value: rankedValues.slice(7).reduce((sum, item) => sum + item.value, 0) }
+        ]
+        : sourceValues;
+    const colorSlots = values.map((_, index) => index);
     const canvas = root.querySelector('[data-chart-canvas]');
     const legend = root.querySelector('[data-chart-legend]');
     const summary = root.querySelector('[data-chart-summary]');
@@ -72,7 +80,7 @@ document.querySelectorAll('[data-interactive-chart]').forEach(root => {
             addText(group, shortLabel(item.label, 25), 0, y + 23, 'chart-label');
             group.append(svgElement('rect', {
                 x: 225, y: y + 5, width: Math.max(0, item.value) / maxValue * 590, height: 24,
-                rx: 2, class: `chart-color-${index % 10}`
+                rx: 2, class: `chart-color-${colorSlots[index]}`
             }));
             addText(group, numberFormat.format(item.value), 830, y + 23, 'chart-value');
             svg.append(group);
@@ -110,7 +118,7 @@ document.querySelectorAll('[data-interactive-chart]').forEach(root => {
                 width: Math.min(54, slotWidth * 0.58),
                 height: barHeight,
                 rx: 2,
-                class: `chart-color-${index % 10}`
+                class: `chart-color-${colorSlots[index]}`
             }));
             addText(group, numberFormat.format(item.value), x, Math.max(top + 14, bottom - barHeight - 8), 'chart-value', 'middle');
             addText(group, shortLabel(item.label, 13), x, bottom + 26, 'chart-label', 'middle');
@@ -139,14 +147,14 @@ document.querySelectorAll('[data-interactive-chart]').forEach(root => {
                 d: sweep >= Math.PI * 2
                     ? ''
                     : `M ${centerX} ${centerY} L ${startX} ${startY} A ${radius} ${radius} 0 ${sweep > Math.PI ? 1 : 0} 1 ${endX} ${endY} Z`,
-                class: `chart-color-${index % 10}`,
+                class: `chart-color-${colorSlots[index]}`,
                 stroke: '#fff',
                 'stroke-width': 2
             });
             addTitle(group, `${item.label}: ${numberFormat.format(item.value)}`);
             if (sweep >= Math.PI * 2) {
                 group.append(svgElement('circle', {
-                    cx: centerX, cy: centerY, r: radius, class: `chart-color-${index % 10}`
+                    cx: centerX, cy: centerY, r: radius, class: `chart-color-${colorSlots[index]}`
                 }));
             } else if (sweep > 0) {
                 group.append(path);
@@ -190,7 +198,7 @@ document.querySelectorAll('[data-interactive-chart]').forEach(root => {
         button.title = `${item.label}: ${numberFormat.format(item.value)}`;
 
         const swatch = document.createElement('span');
-        swatch.className = `chart-legend__swatch chart-swatch--${index % 10}`;
+        swatch.className = `chart-legend__swatch chart-swatch--${colorSlots[index]}`;
         swatch.setAttribute('aria-hidden', 'true');
         const label = document.createElement('span');
         label.textContent = item.label;

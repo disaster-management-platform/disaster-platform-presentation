@@ -46,7 +46,7 @@
 }
 
 .progress-bar {
-    background-color: var(--bs-primary);
+    background-color: #1f5fa8;
 }
 
 .table-scroll {
@@ -135,16 +135,15 @@
     border-radius: 2px;
 }
 
-.chart-color-0, .chart-swatch--0 { fill: #444; background-color: #444; }
-.chart-color-1, .chart-swatch--1 { fill: #666; background-color: #666; }
-.chart-color-2, .chart-swatch--2 { fill: #888; background-color: #888; }
-.chart-color-3, .chart-swatch--3 { fill: #aaa; background-color: #aaa; }
-.chart-color-4, .chart-swatch--4 { fill: #555; background-color: #555; }
-.chart-color-5, .chart-swatch--5 { fill: #777; background-color: #777; }
-.chart-color-6, .chart-swatch--6 { fill: #999; background-color: #999; }
-.chart-color-7, .chart-swatch--7 { fill: #bbb; background-color: #bbb; }
-.chart-color-8, .chart-swatch--8 { fill: #333; background-color: #333; }
-.chart-color-9, .chart-swatch--9 { fill: #ccc; background-color: #ccc; }
+.chart-color-0, .chart-swatch--0 { fill: #1f5fa8; background-color: #1f5fa8; }
+.chart-color-1, .chart-swatch--1 { fill: #c08410; background-color: #c08410; }
+.chart-color-2, .chart-swatch--2 { fill: #00918a; background-color: #00918a; }
+.chart-color-3, .chart-swatch--3 { fill: #c8553d; background-color: #c8553d; }
+.chart-color-4, .chart-swatch--4 { fill: #6a4fb0; background-color: #6a4fb0; }
+.chart-color-5, .chart-swatch--5 { fill: #4a8f2f; background-color: #4a8f2f; }
+.chart-color-6, .chart-swatch--6 { fill: #b0457a; background-color: #b0457a; }
+.chart-color-7, .chart-color-8, .chart-color-9,
+.chart-swatch--7, .chart-swatch--8, .chart-swatch--9 { fill: #7b8794; background-color: #7b8794; }
 
 .leaflet-container a {
     color: #555;
