@@ -49,6 +49,8 @@ public static class Catalog
     }
 
     public static Screen Get(string id) => ById[id];
+    public static string? DashboardId(string module) =>
+        All.FirstOrDefault(s => s.Module == module && !s.Route.Contains('/'))?.Id;
     public static string Url(string to, string? current = null) => Build(to, current, 0);
     public static string RowUrl(string to, int i) => Build(to, null, i);
 
@@ -105,7 +107,18 @@ public static class Catalog
                      PEO = "Personas afectadas", ORG = "Coordinación de organizaciones", REC = "Reconstrucción";
 
         Screen M(string id, string mod, string title, string route, Kind k, char st, string api) =>
-            new() { Id = id, Module = mod, Title = title, Route = route, Kind = k, State = st, Api = api };
+            new()
+            {
+                Id = id, Module = mod, Title = title, Route = route, Kind = k, State = st, Api = api,
+                Intro = k switch
+                {
+                    Kind.Dashboard => $"Consulta la información principal de {mod.ToLowerInvariant()} y accede a sus herramientas.",
+                    Kind.List => "Consulta los registros disponibles y realiza las acciones de esta sección.",
+                    Kind.Detail => "Consulta la información y el historial de este registro.",
+                    Kind.Form => "Completa la información solicitada para continuar.",
+                    _ => null
+                }
+            };
 
         // Opciones compartidas
         const string sev = "1|2|3|4|5";
@@ -180,28 +193,28 @@ public static class Catalog
         return new List<Screen>
         {
             // ===== 1. Autenticación =====
-            M("AUTH", AUT, "Inicio de sesión con segundo factor", "Cuenta/Acceder", Kind.Auth, 'N',
+            M("AUTH", AUT, "Acceso a la plataforma", "Cuenta/Acceder", Kind.Auth, 'N',
               "OIDC Authorization Code + PKCE, callback /signin-oidc (Keycloak)") with
             {
-                Intro = "Las credenciales, la recuperación de clave y el OTP los sirve Keycloak. Esta pantalla solo inicia el flujo.",
+                Intro = "Accede a la plataforma para consultar información y coordinar la atención de emergencias.",
                 Links = [L("Ingresar con Keycloak", "HOME", true)],
             },
 
             // ===== 2. Principal =====
-            M("HOME", HOM, "Dashboard general", "", Kind.Dashboard, 'A',
+            M("HOME", HOM, "Centro de operaciones", "", Kind.Dashboard, 'A',
               "GET /api/desastres; GET /api/reconstruccion/proyectos. Daños, personas y alertas son N/E") with
             {
+                Intro = "Consulta de un vistazo la situación de las emergencias y las alertas recientes.",
                 Stats = [S("Desastres activos", "3"), S("Evaluaciones", "128"), S("Personas afectadas", "1.240"), S("Proyectos", "12")],
                 Map = true,
                 TableTitle = "Alertas recientes",
                 Cols = alertCols,
-                Links = [L("Desastres", "DIS-01"), L("Daños", "DAM-01"), L("Personas", "PEO-01"),
-                         L("Organizaciones", "ORG-01"), L("Reconstrucción", "REC-01")],
             },
 
             // ===== 3. Gestión de desastres =====
-            M("DIS-01", DIS, "Dashboard de desastres", "Desastres", Kind.Dashboard, 'A', "GET /api/desastres (array). N geometria") with
+            M("DIS-01", DIS, "Resumen de desastres", "Desastres", Kind.Dashboard, 'A', "GET /api/desastres (array). N geometria") with
             {
+                Intro = "Consulta los desastres activos, su ubicación y las alertas de cada emergencia.",
                 Stats = [S("Activos", "3"), S("Críticos", "1")],
                 Map = true,
                 TableTitle = "Desastres recientes",
@@ -300,8 +313,9 @@ public static class Catalog
             },
 
             // ===== 4. Evaluación de daños =====
-            M("DAM-01", DAM, "Dashboard de daños", "Danos", Kind.Dashboard, 'N', "N GET /api/evaluaciones/mapa?disasterId={id}; GET /api/evaluaciones?disasterId={id}") with
+            M("DAM-01", DAM, "Resumen de daños", "Danos", Kind.Dashboard, 'N', "N GET /api/evaluaciones/mapa?disasterId={id}; GET /api/evaluaciones?disasterId={id}") with
             {
+                Intro = "Consulta las evaluaciones de daños y el estado de los bienes afectados.",
                 Stats = [S("Evaluaciones", "128"), S("Daño grave o total", "23"), S("Por validar", "17")],
                 Map = true,
                 TableTitle = "Activos por nivel de daño",
@@ -365,9 +379,9 @@ public static class Catalog
                     F("evidence", "Evidencias (fotos o documentos)", FT.File),
                 ],
             },
-            M("DAM-05", DAM, "Sincronización de campo", "Danos/Sincronizacion", Kind.List, 'N', "GET /api/evaluaciones/sincronizacion?disasterId={id}") with
+            M("DAM-05", DAM, "Evaluaciones recibidas del trabajo en campo", "Danos/Sincronizacion", Kind.List, 'N', "GET /api/evaluaciones/sincronizacion?disasterId={id}") with
             {
-                Intro = "Solo muestra lo que el servidor recibió. La cola local pertenece a la app Android.",
+                Intro = "Consulta las evaluaciones recibidas y revisa los conflictos que requieren atención.",
                 RowTo = "DAM-03",
                 Cols = [C("clientRequestId", "Operación", s: "a1f3…9c|b72e…01|c9d4…7a"), C("evaluationId", "Evaluación", s: "3f2b…11|8a90…42"),
                         C("receivedAt", "Recibida", CT.Date), C("status", "Estado", CT.Badge, "Applied|Conflict|Error|Applied"),
@@ -377,8 +391,9 @@ public static class Catalog
             },
 
             // ===== 5. Personas afectadas =====
-            M("PEO-01", PEO, "Dashboard de personas afectadas", "Personas", Kind.Dashboard, 'E', "E GET /api/personas-afectadas/resumen?disasterId={id}") with
+            M("PEO-01", PEO, "Resumen de personas afectadas", "Personas", Kind.Dashboard, 'E', "E GET /api/personas-afectadas/resumen?disasterId={id}") with
             {
+                Intro = "Consulta las cifras de personas y familias afectadas y las necesidades de atención.",
                 Stats = [S("Personas", "1.240"), S("Familias", "312"), S("Expedientes abiertos", "87"), S("Alojados", "540")],
                 Chart = true, ChartTitle = "Personas por zona",
                 Links = [L("Registrar persona", "PEO-03", true), L("Directorio", "PEO-02"), L("Detalle de ejemplo", "PEO-04"),
@@ -434,6 +449,7 @@ public static class Catalog
             // ===== 6. Coordinación de organizaciones =====
             M("ORG-01", ORG, "Directorio de organizaciones", "Organizaciones", Kind.List, 'E', "E GET /api/organizaciones; GET /api/organizaciones/tipos") with
             {
+                Intro = "Consulta las organizaciones registradas y coordina sus tareas y comunicaciones.",
                 RowTo = "ORG-02",
                 Cols = [C("name", "Nombre", s: "Cruz Roja Colombiana|Defensa Civil|Bomberos Bogotá|Policía Nacional|Secretaría de Salud"),
                         C("acronym", "Sigla", s: "CRC|DCC|BB|PN|SDS"), C("typeId", "Tipo", s: "ONG|Gubernamental|Seguridad|Seguridad|Salud"),
@@ -485,9 +501,10 @@ public static class Catalog
             },
 
             // ===== 7. Reconstrucción =====
-            M("REC-01", REC, "Dashboard de reconstrucción", "Reconstruccion", Kind.Dashboard, 'A',
+            M("REC-01", REC, "Resumen de reconstrucción", "Reconstruccion", Kind.Dashboard, 'A',
               "GET /api/reconstruccion/propuestas y /proyectos?disasterId={id}. N mapa DAM-01") with
             {
+                Intro = "Consulta las propuestas, los proyectos en curso y los recursos destinados a la recuperación.",
                 Stats = [S("Propuestas", "24"), S("En ejecución", "9"), S("Cerrados", "3"), S("Presupuesto", "$ 12.400 M")],
                 Map = true, TableTitle = "Propuestas", RowTo = "REC-03",
                 Cols = [C("disaster", "Desastre", s: desastres), C("zone", "Zona", s: "Armenia|Calarcá|Cali|Manizales"),
@@ -615,7 +632,7 @@ public static class Catalog
             M("REC-13", REC, "Cierre y reporte final", "Reconstruccion/Proyectos/{id:guid}/Cierre", Kind.Detail, 'A', "GET P/monitoreo; POST P/cerrar {expectedVersion}; GET P/reporte-final") with
             {
                 Print = true,
-                Intro = "El botón Cerrar solo se habilita cuando el servidor indica canFinalize.",
+                Intro = "Revisa el avance, los gastos y los documentos antes de cerrar el proyecto.",
                 Cols = [C("finalBudget", "Presupuesto final", CT.Money), C("totalExecuted", "Total ejecutado", CT.Money), C("remainingBudget", "Saldo", CT.Money),
                         C("responsible", "Responsable", s: "Ing. Rojas"), C("contractor", "Contratista", s: "Constructora Andina"),
                         C("fundingSource", "Financiación", s: "Presupuesto nacional"), C("totalActivities", "Actividades", s: "5"),
