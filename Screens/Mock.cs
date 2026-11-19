@@ -67,8 +67,8 @@ public static class Mock
     {
         var t = v.ToLowerInvariant();
         var kind = Danger.Any(t.Contains) ? "danger"
-                 : Success.Any(t.Contains) && !t.Contains("inactivo", StringComparison.Ordinal) ? "success"
-                 : Warning.Any(t.Contains) ? "warning" : "secondary";
+                 : Warning.Any(t.Contains) ? "warning"
+                 : Success.Any(t.Contains) && !t.Contains("inactivo", StringComparison.Ordinal) ? "success" : "secondary";
         return $"badge text-bg-{kind}";
     }
 }

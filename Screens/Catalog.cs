@@ -100,7 +100,7 @@ public static class Catalog
     static SubTable T(string title, string? rowTo, params Col[] c) => new(title, c, rowTo);
     static Stat S(string l, string v) => new(l, v);
 
-    // ---------- Catálogo de las 39 pantallas ----------
+    // ---------- Catálogo de las 56 pantallas ----------
     static List<Screen> Build()
     {
         const string AUT = "Autenticación", HOM = "Inicio", DIS = "Gestión de desastres", DAM = "Evaluación de daños",
@@ -565,6 +565,7 @@ public static class Catalog
                     C("ocupacion", "Ocupación", CT.Number), C("responsable", "Responsable", s: "Cruz Roja|Defensa Civil|Autoridad local"),
                     C("estado", "Estado", CT.Badge, "Abierto|Lleno|Cerrado"),
                 ],
+                RowTo = "PEO-08",
                 Filters = [F("estado", "Estado", o: "Abierto|Lleno|Cerrado")],
                 Dialogs =
                 [
@@ -576,6 +577,31 @@ public static class Catalog
                       F("longitud", "Longitud", FT.Number, min: -180, hi: 180)),
                 ],
                 Links = [L("Registrar solicitud de ayuda", "PEO-09", true), L("Directorio", "PEO-02")],
+            },
+            M("PEO-08", PEO, "Detalle de refugio", "Personas/Refugios/{id:guid}", Kind.Detail, 'E',
+              "E GET /api/refugios/{id}; PUT /api/refugios/{id}/ocupacion") with
+            {
+                Cols =
+                [
+                    C("nombre", "Refugio", s: "Coliseo Armenia"), C("ubicacion", "Ubicación", s: "Armenia"),
+                    C("capacidad", "Capacidad", CT.Number), C("ocupacion", "Ocupación", CT.Number),
+                    C("responsable", "Responsable", s: "Cruz Roja"), C("estado", "Estado", CT.Badge, "Abierto"),
+                    C("contacto", "Contacto", s: "300 555 0142"),
+                ],
+                Tables =
+                [
+                    T("Personas alojadas", "PEO-04", C("persona", "Persona", s: "María Gómez|Juan Pérez|Ana Rojas"),
+                      C("familia", "Familia", s: "Familia Gómez|Familia Pérez"), C("fechaIngreso", "Ingreso", CT.Date)),
+                    T("Recursos asignados", null, C("recurso", "Recurso", s: "Kit de alimentos|Agua potable|Colchonetas"),
+                      C("cantidad", "Cantidad", CT.Number), C("fecha", "Fecha", CT.Date),
+                      C("estado", "Estado", CT.Badge, "Asignado|Entregado|Pendiente")),
+                ],
+                Dialogs =
+                [
+                    D("ocupacion", "Actualizar ocupación", "Actualizar ocupación",
+                      F("ocupacion", "Ocupación", FT.Number, req: true, min: 0),
+                      F("observaciones", "Observaciones", FT.TextArea)),
+                ],
             },
             M("PEO-09", PEO, "Solicitudes de ayuda y atención", "Personas/Solicitudes", Kind.List, 'E',
               "E GET/POST /api/personas-afectadas/solicitudes-ayuda; POST .../atenciones") with
@@ -855,7 +881,7 @@ public static class Catalog
                 Links = [L("Solicitar recurso", "RES-04", true)],
             },
             M("RES-03", RES, "Detalle de recurso", "Recursos/Inventario/{id:guid}", Kind.Detail, 'E',
-              "E GET /api/recursos/{id}") with
+              "E GET /api/recursos/{id}; PUT /api/recursos/{id}/ajuste") with
             {
                 Cols =
                 [
@@ -863,6 +889,22 @@ public static class Catalog
                     C("disponible", "Disponible", CT.Number), C("unidad", "Unidad", s: "litros"),
                     C("ubicacion", "Ubicación", s: "Bodega Armenia"), C("organizacion", "Propietario", s: "Defensa Civil"),
                     C("estado", "Estado", CT.Badge, "Disponible"), C("actualizado", "Actualizado", CT.Date),
+                    C("observaciones", "Observaciones", s: "Reserva para atención de emergencia"),
+                ],
+                Tables =
+                [
+                    T("Asignaciones", null, C("solicitud", "Solicitud", s: "SOL-0101|SOL-0102"),
+                      C("solicitante", "Solicitante", s: orgs), C("cantidad", "Cantidad", CT.Number),
+                      C("fecha", "Fecha", CT.Date), C("estado", "Estado", CT.Badge, "Asignado|Entregado")),
+                    T("Movimientos", null, C("fecha", "Fecha", CT.Date),
+                      C("tipo", "Tipo", s: "Ingreso|Salida|Ajuste"), C("cantidad", "Cantidad", CT.Number),
+                      C("usuario", "Usuario", s: "j.pardo|m.torres|a.vargas")),
+                ],
+                Dialogs =
+                [
+                    D("ajustar", "Ajustar existencias", "Ajustar existencias",
+                      F("cantidad", "Cantidad", FT.Number, req: true, min: 0),
+                      F("motivo", "Motivo", FT.TextArea, req: true)),
                 ],
             },
             M("RES-04", RES, "Solicitud de recursos", "Recursos/Solicitudes/Crear", Kind.Form, 'N',
@@ -948,6 +990,57 @@ public static class Catalog
                       F("nombre", "Nombre", req: true), F("descripcion", "Descripción", FT.TextArea)),
                     D("desactivar", "Desactivar tipo", "Desactivar tipo",
                       F("nombre", "Tipo de desastre", req: true)),
+                ],
+            },
+            M("ADM-02", ADM, "Tipos de activo y categorías de daño", "Administracion/Activos", Kind.List, 'N',
+              "N GET/POST /api/administracion/tipos-activo; GET/POST /api/administracion/categorias-dano") with
+            {
+                Intro = "Administra los tipos de bienes y las categorías usadas para evaluar sus daños.",
+                TableTitle = "Tipos de activo",
+                Cols =
+                [
+                    C("tipo", "Tipo de activo", s: "Vivienda|Hospital|Escuela|Puente|Carretera|Red eléctrica"),
+                    C("criterios", "Criterios de evaluación", s: "Estructura, habitabilidad|Capacidad, servicios|Estado de la superficie"),
+                    C("activo", "Estado", CT.Badge, "Activo|Activo|Inactivo"),
+                ],
+                Tables =
+                [
+                    T("Categorías de daño", null,
+                      C("categoria", "Categoría", s: "Sin daño|Daño leve|Daño moderado|Daño grave|Destrucción total"),
+                      C("descripcion", "Descripción", s: "Sin afectación visible|Daño reparable|Daño estructural grave"),
+                      C("aplicaA", "Aplica a", s: "Todos los activos|Edificaciones|Vías e infraestructura")),
+                ],
+                Dialogs =
+                [
+                    D("tipo", "Nuevo tipo de activo", "Nuevo tipo de activo",
+                      F("nombre", "Tipo de activo", req: true), F("criterios", "Criterios", FT.TextArea)),
+                    D("categoria", "Nueva categoría de daño", "Nueva categoría de daño",
+                      F("nombre", "Categoría", req: true), F("descripcion", "Descripción", FT.TextArea),
+                      F("aplicaA", "Aplica a", req: true)),
+                ],
+            },
+            M("ADM-03", ADM, "Usuarios y roles", "Administracion/Usuarios", Kind.List, 'N',
+              "N GET /api/administracion/usuarios; PUT /api/administracion/usuarios/{id}/rol; PUT .../{id}/estado") with
+            {
+                Intro = "El acceso se controla por rol y por organización.",
+                Cols =
+                [
+                    C("usuario", "Usuario", s: "j.pardo|m.torres|a.vargas"),
+                    C("nombre", "Nombre", s: "Juan Pardo|Marta Torres|Ana Vargas"),
+                    C("organizacion", "Organización", s: orgs),
+                    C("rol", "Rol", s: "Administrador|Coordinador|Evaluador de campo|Consulta"),
+                    C("estado", "Estado", CT.Badge, "Activo|Activo|Suspendido"),
+                    C("ultimoAcceso", "Último acceso", CT.Date),
+                ],
+                Filters = [F("rol", "Rol", o: "Administrador|Coordinador|Evaluador de campo|Consulta"),
+                           F("estado", "Estado", o: "Activo|Suspendido")],
+                Dialogs =
+                [
+                    D("rol", "Cambiar rol", "Cambiar rol",
+                      F("usuario", "Usuario", req: true),
+                      F("rol", "Rol", FT.Select, req: true, o: "Administrador|Coordinador|Evaluador de campo|Consulta")),
+                    D("estado", "Suspender usuario", "Suspender usuario",
+                      F("usuario", "Usuario", req: true), F("motivo", "Motivo", FT.TextArea, req: true)),
                 ],
             },
             M("AUD-01", AUD, "Auditoría y trazabilidad", "Auditoria", Kind.List, 'N',

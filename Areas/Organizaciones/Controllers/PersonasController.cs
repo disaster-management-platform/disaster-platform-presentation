@@ -37,6 +37,12 @@ public class PersonasController(IPersonasClient api) : PantallaController(api)
     [HttpPost("Personas/Refugios/Accion/{dialog}"), ValidateAntiForgeryToken]
     public Task<IActionResult> Peo07Accion(string dialog, [Bind(Prefix = "Values")] Dictionary<string, string?> values) => Accion("PEO-07", null, dialog, values);
 
+    [HttpGet("Personas/Refugios/{id:guid}")]
+    public Task<IActionResult> Peo08(string id) => Ver("PEO-08", id);
+
+    [HttpPost("Personas/Refugios/{id:guid}/Accion/{dialog}"), ValidateAntiForgeryToken]
+    public Task<IActionResult> Peo08Accion(string id, string dialog, [Bind(Prefix = "Values")] Dictionary<string, string?> values) => Accion("PEO-08", id, dialog, values);
+
     [HttpGet("Personas/Solicitudes")]
     public Task<IActionResult> Peo09() => Ver("PEO-09", null);
 
