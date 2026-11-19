@@ -63,7 +63,7 @@ curl --fail http://127.0.0.1:18913/api/tipos-desastre
 
 ## Clients and lifecycle
 
-The seven enrolled demo users are stored in `~/.config/disaster-management-platform/demo-users.json` (600), including passwords and TOTP enrollment secrets. Obtain them locally from the environment administrator and import each seed into an authenticator that supports SHA-256, six digits and a 30-second period. Never paste them into chat, logs or Git. Accounts use organization 3 and explicit disaster grants 4–9:
+The seven demo users are stored in `~/.config/disaster-management-platform/demo-users.json` (600). Their local test password is `testing`; no MFA enrollment or OTP code is required. Obtain protected configuration locally from the environment administrator; never publish it. The versioned Keycloak provisioning disables OTP and CONFIGURE_TOTP for fresh and persistent realms, identically for Razor and Android. Keep OIDC, S256 PKCE, JWT, authorization and HTTPS enabled in every deployment, including future Docker Compose. Accounts use organization 3 and explicit disaster grants 4–9:
 
 | User | Minimum existing domain roles |
 | --- | --- |

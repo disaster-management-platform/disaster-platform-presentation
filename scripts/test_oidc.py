@@ -1,12 +1,7 @@
-"""Directed OIDC/MFA and real Gateway rendering check with an external synthetic user."""
-import base64
-import hashlib
-import hmac
+"""Directed OIDC/password and real Gateway rendering check with an external synthetic user."""
 import json
 import os
 from pathlib import Path
-import struct
-import time
 from urllib.parse import urljoin, urlsplit
 
 import requests
@@ -30,13 +25,7 @@ def login(user=None):
 
     response = session.get(base + '/Cuenta/Acceder', timeout=20)
     response = submit(response, {'username': user['username'], 'password': user['password']})
-    assert BeautifulSoup(response.text, 'html.parser').select_one('input[name=otp]') is not None
-    secret = user['otpSecret'].replace(' ', '')
-    digest = hmac.new(base64.b32decode(secret + '=' * ((-len(secret)) % 8), casefold=True),
-                      struct.pack('>Q', int(time.time()) // 30), hashlib.sha256).digest()
-    offset = digest[-1] & 15
-    code = str((struct.unpack('>I', digest[offset:offset + 4])[0] & 0x7fffffff) % 1000000).zfill(6)
-    response = submit(response, {'otp': code})
+    assert BeautifulSoup(response.text, 'html.parser').select_one('input[name=otp], input[name=totp]') is None
     if BeautifulSoup(response.text, 'html.parser').select_one('input[name=code]'):
         response = submit(response, {})
     assert response.status_code == 200 and response.url.startswith(base + '/')
@@ -47,7 +36,7 @@ def login(user=None):
 if __name__ == "__main__":
     session = login()
     base = os.environ["RAZOR_TEST_URL"].rstrip("/")
-    print('PASS real OIDC callback, MFA and secure session')
+    print('PASS real OIDC callback, password-only login and secure session')
     response = session.get(base + '/Organizaciones', timeout=20)
     assert response.status_code == 200 and os.environ['RAZOR_TEST_ORGANIZATION_NAME'] in response.text
     print('PASS authenticated Gateway list envelope rendered by Razor')
