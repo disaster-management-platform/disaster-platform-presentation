@@ -24,10 +24,22 @@ public abstract class PantallaController(IPantallaClient api) : Controller
         {
             if (s.Kind == Kind.List || (s.Kind == Kind.Dashboard && s.Cols.Length > 0))
                 vm.Filas = await api.FilasAsync(s, s.Cols, s.RowTo, id, -1, ct);
+            if (s.Id == "REC-02" && vm.Filas is not null)
+                vm.Filas = vm.Filas
+                    .OrderBy(row => Celda(row, s, "zone"), StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(row => Celda(row, s, "assetType"), StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(row => RangoDanio(Celda(row, s, "damage")))
+                    .ThenBy(row => Celda(row, s, "damage"), StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
             for (var i = 0; i < s.Tables.Length; i++)
                 vm.FilasSub[i] = await api.FilasAsync(s, s.Tables[i].Cols, s.Tables[i].RowTo, id, i, ct) ?? [];
             if (s.Kind == Kind.Detail)
                 vm.Detalle = await api.DetalleAsync(s, id, ct);
+            if (s.Stage == 3 && id is not null)
+            {
+                var proyecto = await api.DetalleAsync(Catalog.Get("REC-05"), id, ct);
+                vm.ProjectStatus = proyecto?.GetValueOrDefault("status");
+            }
         }
         catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
         {   // degradación controlada: la pantalla se muestra vacía con el aviso
@@ -35,14 +47,75 @@ public abstract class PantallaController(IPantallaClient api) : Controller
             vm.Filas ??= [];
             for (var i = 0; i < s.Tables.Length; i++) vm.FilasSub.TryAdd(i, []);
         }
+        if (s.Id == "REC-05")
+        {
+            var status = vm.Detalle?.GetValueOrDefault("status") ?? "Monitoring";
+            vm.ProjectStatus = status;
+            vm.Screen = s with { Stage = Etapa(status) };
+        }
+        else if (s.Stage == 3 && api.Simulado && vm.ProjectStatus is null)
+            vm.ProjectStatus = "Monitoring";
+        if (s.Id == "REC-13")
+        {
+            var canFinalize = vm.Detalle?.GetValueOrDefault("canFinalize");
+            var sampleCanFinalize = Mock.Cell(s.Cols.Single(c => c.Key == "canFinalize"), 0);
+            vm.CanFinalize = ParseFlag(canFinalize) ?? (api.Simulado && ParseFlag(sampleCanFinalize) == true);
+            var missing = vm.Detalle?.GetValueOrDefault("activitiesWithoutReports");
+            if (int.TryParse(missing, out var missingCount))
+                vm.ActivitiesWithoutReports = missingCount;
+            else if (api.Simulado && int.TryParse(Mock.Cell(s.Cols.Single(c => c.Key == "activitiesWithoutReports"), 0), out missingCount))
+                vm.ActivitiesWithoutReports = missingCount;
+        }
         return View("Pantalla", vm);
     }
+
+    static bool? ParseFlag(string? value) => value?.Trim().ToLowerInvariant() switch
+    {
+        "true" or "1" or "yes" or "sí" or "si" => true,
+        "false" or "0" or "no" => false,
+        _ => null
+    };
+
+    static int Etapa(string status) => status.ToLowerInvariant() switch
+    {
+        "draft" => 2,
+        "formalized" or "monitoring" => 3,
+        "closed" => 4,
+        _ => 3
+    };
+
+    static string Celda(Row row, Screen screen, string key)
+    {
+        var index = Array.FindIndex(screen.Cols, column => column.Key == key);
+        return index >= 0 && index < row.Cells.Length ? row.Cells[index].Text : "";
+    }
+
+    static int RangoDanio(string value) => value.ToLowerInvariant() switch
+    {
+        "none" or "sin daño" => 0,
+        "minor" or "leve" => 1,
+        "moderate" or "moderado" => 2,
+        "severe" or "grave" => 3,
+        "destroyed" or "destrucción total" => 4,
+        _ => 5
+    };
 
     protected async Task<IActionResult> Guardar(string sid, string? id, Dictionary<string, string?> values)
     {
         var s = Catalog.Get(sid);
         var vm = new PantallaVm { Values = values, Key = Clave() };
-        foreach (var f in s.Fields) Validar(vm.Errors, values, f);
+        foreach (var f in s.Fields)
+        {
+            if (f.Type == FT.File)
+            {
+                if (f.Required && !Request.Form.Files.Any(file =>
+                    file.Name.Equals($"Values[{f.Name}]", StringComparison.OrdinalIgnoreCase) && file.Length > 0))
+                    vm.Errors[f.Name] = "es obligatorio.";
+            }
+            else
+                Validar(vm.Errors, values, f);
+        }
+        if (sid == "REC-06") ValidarCronograma(values, vm.Errors);
         if (vm.Errors.Count > 0) return await Ver(sid, id, vm);
         try
         {
@@ -57,11 +130,98 @@ public abstract class PantallaController(IPantallaClient api) : Controller
         }
     }
 
+    static void ValidarCronograma(Dictionary<string, string?> values, IDictionary<string, string> errors)
+    {
+        var lines = (values.GetValueOrDefault("activities") ?? "")
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (lines.Length == 0)
+        {
+            errors["activities"] = "Debe registrar al menos una actividad.";
+            return;
+        }
+
+        decimal total = 0;
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var parts = lines[i].Split(';').Select(part => part.Trim()).ToArray();
+            if (parts.Length != 5)
+            {
+                errors["activities"] = $"La actividad {i + 1} debe incluir tarea, responsable, fecha de inicio, vencimiento y presupuesto.";
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(parts[0]) || string.IsNullOrWhiteSpace(parts[1]))
+            {
+                errors["activities"] = $"La actividad {i + 1} debe indicar una tarea y un responsable.";
+                return;
+            }
+            if (!DateOnly.TryParseExact(parts[2], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var startsAt)
+                || !DateOnly.TryParseExact(parts[3], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dueAt))
+            {
+                errors["activities"] = $"La actividad {i + 1} debe incluir fechas válidas.";
+                return;
+            }
+            if (dueAt < startsAt)
+            {
+                errors["activities"] = $"La fecha de vencimiento de la actividad {i + 1} debe ser igual o posterior al inicio.";
+                return;
+            }
+            if (!decimal.TryParse(parts[4], NumberStyles.Number, CultureInfo.InvariantCulture, out var budget) || budget <= 0)
+            {
+                errors["activities"] = $"El presupuesto de la actividad {i + 1} debe ser mayor que cero.";
+                return;
+            }
+            if (budget > decimal.MaxValue - total)
+            {
+                errors["activities"] = "La suma de los presupuestos de las actividades no es válida.";
+                return;
+            }
+            total += budget;
+        }
+
+        if (decimal.TryParse(values.GetValueOrDefault("finalBudget"), NumberStyles.Number, CultureInfo.InvariantCulture, out var finalBudget)
+            && total > finalBudget)
+            errors["activities"] = "La suma de las actividades no puede superar el presupuesto final.";
+    }
+
     protected async Task<IActionResult> Accion(string sid, string? id, string dialog, Dictionary<string, string?> values)
     {
         var s = Catalog.Get(sid);
         var d = s.Dialogs.FirstOrDefault(x => x.Id == dialog);
         if (d is null) return NotFound();
+        if (sid == "REC-02" && dialog == "proyectos")
+            return await CrearProyectos(s, id, values);
+        if ((sid == "REC-13" && dialog == "cerrar") || sid == "ORG-08")
+        {
+            var versionError = sid == "REC-13"
+                ? "No se pudo determinar la versión actual del proyecto."
+                : "No se pudo determinar la versión actual de la tarea.";
+            if (!int.TryParse(values.GetValueOrDefault("expectedVersion"), NumberStyles.Integer,
+                    CultureInfo.InvariantCulture, out var expectedVersion) || expectedVersion <= 0)
+            {
+                TempData["Err"] = versionError;
+                return Redirect(Catalog.Url(sid, id));
+            }
+        }
+        if (sid == "REC-13" && dialog == "cerrar")
+        {
+            try
+            {
+                var detail = await api.DetalleAsync(s, id, HttpContext.RequestAborted);
+                var canFinalize = ParseFlag(detail?.GetValueOrDefault("canFinalize"));
+                if (canFinalize is null && api.Simulado)
+                    canFinalize = ParseFlag(Mock.Cell(s.Cols.Single(c => c.Key == "canFinalize"), 0));
+                if (canFinalize != true)
+                {
+                    TempData["Err"] = "No se puede cerrar el proyecto mientras existan actividades incompletas o reportes pendientes.";
+                    return Redirect(Catalog.Url(sid, id));
+                }
+            }
+            catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
+            {
+                TempData["Err"] = Mensaje(e);
+                return Redirect(Catalog.Url(sid, id));
+            }
+        }
         var errores = new Dictionary<string, string>();
         foreach (var f in d.Fields) Validar(errores, values, f);
         if (errores.Count > 0)
@@ -77,6 +237,40 @@ public abstract class PantallaController(IPantallaClient api) : Controller
                 TempData["Err"] = $"{d.Title}: {Mensaje(e)}";
             }
         return Redirect(Catalog.Url(sid, id));
+    }
+
+    async Task<IActionResult> CrearProyectos(Screen screen, string? id, Dictionary<string, string?> values)
+    {
+        var rawIds = values.GetValueOrDefault("ids") ?? "";
+        var proposalIds = rawIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        if (proposalIds.Length == 0 || proposalIds.Any(proposalId => !Guid.TryParse(proposalId, out _)))
+        {
+            TempData["Err"] = "Selecciona al menos una propuesta válida.";
+            return Redirect(Catalog.Url(screen.Id, id));
+        }
+
+        var creados = 0;
+        try
+        {
+            foreach (var proposalId in proposalIds)
+            {
+                var requestValues = new Dictionary<string, string?>(values, StringComparer.OrdinalIgnoreCase)
+                {
+                    ["ids"] = proposalId
+                };
+                await api.EnviarAsync(screen, "proyectos", requestValues, Guid.NewGuid(), proposalId, HttpContext.RequestAborted);
+                creados++;
+            }
+            TempData["Msg"] = $"{creados} proyectos creados.";
+        }
+        catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
+        {
+            TempData["Err"] = creados == 0
+                ? Mensaje(e)
+                : $"Se crearon {creados} de {proposalIds.Length} proyectos. {Mensaje(e)}";
+        }
+        return Redirect(Catalog.Url(screen.Id, id));
     }
 
     Guid Clave() => Guid.TryParse(Request.Form["Key"], out var k) ? k : Guid.NewGuid();

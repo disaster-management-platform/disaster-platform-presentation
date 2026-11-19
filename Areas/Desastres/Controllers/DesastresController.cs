@@ -42,4 +42,10 @@ public class DesastresController(IDesastresClient api) : PantallaController(api)
 
     [HttpPost("Desastres/{id:int}/Alertas/Accion/{dialog}"), ValidateAntiForgeryToken]
     public Task<IActionResult> Dis07Accion(string id, string dialog, [Bind(Prefix = "Values")] Dictionary<string, string?> values) => Accion("DIS-07", id, dialog, values);
+
+    [HttpGet("Desastres/{id:int}/Evolucion")]
+    public Task<IActionResult> Dis08(string id) => Ver("DIS-08", id);
+
+    [HttpPost("Desastres/{id:int}/Evolucion/Accion/{dialog}"), ValidateAntiForgeryToken]
+    public Task<IActionResult> Dis08Accion(string id, string dialog, [Bind(Prefix = "Values")] Dictionary<string, string?> values) => Accion("DIS-08", id, dialog, values);
 }

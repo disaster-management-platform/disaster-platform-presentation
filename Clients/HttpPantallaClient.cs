@@ -30,9 +30,17 @@ public abstract class HttpPantallaClient(HttpClient http) : IPantallaClient
         var ruta = Ruta(s, "GET", id);
         if (ruta is null) return [];
         var items = await http.GetFromJsonAsync<List<Dictionary<string, JsonElement>>>(ruta, ct) ?? [];
-        return items.Select(it => new Row(
-            rowTo is null || !it.TryGetValue("id", out var rid) ? null : Catalog.Url(rowTo, rid.ToString()),
-            cols.Select(c => (Texto(it, c.Key), c.Type == CT.Badge)).ToArray())).ToList();
+        return items.Select(it =>
+        {
+            var idKey = it.Keys.FirstOrDefault(key => key.Equals("id", StringComparison.OrdinalIgnoreCase));
+            var recordId = idKey is null ? null : it[idKey].ToString();
+            if (string.IsNullOrWhiteSpace(recordId)) recordId = null;
+            var priority = s.Id == "REC-02" ? Texto(it, "priority") : null;
+            return new Row(
+                rowTo is null || recordId is null ? null : Catalog.Url(rowTo, recordId),
+                cols.Select(c => (c.Key == "resultado" && s.Id == "REC-02" ? Mock.Resultado(priority) : Texto(it, c.Key), c.Type == CT.Badge)).ToArray(),
+                recordId);
+        }).ToList();
     }
 
     public async Task<IReadOnlyDictionary<string, string>?> DetalleAsync(Screen s, string? id, CancellationToken ct)
@@ -47,7 +55,7 @@ public abstract class HttpPantallaClient(HttpClient http) : IPantallaClient
 
     public async Task EnviarAsync(Screen s, string? dialog, IDictionary<string, string?> valores, Guid key, string? id, CancellationToken ct)
     {
-        var verbo = dialog is null ? "POST" : "PUT";
+        var verbo = dialog is null || (s.Id == "REC-06" && dialog == "confirmar") ? "POST" : "PUT";
         var ruta = Ruta(s, verbo, id) ?? Ruta(s, "POST", id) ?? Ruta(s, "PATCH", id) ?? Ruta(s, "GET", id);
         if (ruta is null) throw new HttpRequestException("Sin endpoint de escritura", null, System.Net.HttpStatusCode.NotImplemented);
         var req = new HttpRequestMessage(verbo == "PUT" && Ruta(s, "PUT", id) is not null ? HttpMethod.Put : HttpMethod.Post, ruta)

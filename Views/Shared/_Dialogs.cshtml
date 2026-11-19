@@ -1,18 +1,36 @@
 @model PantallaVm
 @foreach (var d in Model.Screen.Dialogs)
 {
+    var isBulkProjects = Model.Screen.Id == "REC-02" && d.Id == "proyectos";
+    var isBlockedClose = Model.Screen.Id == "REC-13" && d.Id == "cerrar" && !Model.CanFinalize;
+    var hasVersion = Model.Screen.Cols.Any(c => c.Key == "version");
+    var sendsExpectedVersion = Model.Screen.Id == "REC-13" && d.Id == "cerrar"
+        || Model.Screen.Id == "ORG-08" && hasVersion;
+    var multipart = d.Fields.Any(f => f.Type == FT.File);
     <div class="modal fade" id="dlg-@d.Id" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form method="post" action="@(Context.Request.Path.Value!.TrimEnd('/'))/Accion/@d.Id" novalidate>
+                <form method="post" enctype="@(multipart ? "multipart/form-data" : "application/x-www-form-urlencoded")"
+                      action="@(Context.Request.Path.Value!.TrimEnd('/'))/Accion/@d.Id" novalidate>
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="Key" value="@Guid.NewGuid()" />
+                    @if (sendsExpectedVersion)
+                    {
+                        var version = Model.Detalle?.GetValueOrDefault("version")
+                            ?? Mock.Cell(Model.Screen.Cols.Single(c => c.Key == "version"), 0);
+                        <input type="hidden" name="Values[expectedVersion]" value="@version" />
+                    }
                     <div class="modal-header">
                         <h2 class="modal-title h5">@d.Title</h2>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                     </div>
                     <div class="modal-body">
-                        @if (d.Fields.Length == 0) { <p class="mb-0">¿Confirmas esta acción?</p> }
+                        @if (isBulkProjects)
+                        {
+                            <input type="hidden" name="Values[ids]" value="" data-selected-ids />
+                            <p class="mb-0">Se crearán <span data-selected-count>0</span> proyectos a partir de las propuestas seleccionadas.</p>
+                        }
+                        else if (d.Fields.Length == 0) { <p class="mb-0">@(d.ConfirmationText ?? "¿Confirmas esta acción?")</p> }
                         @foreach (var f in d.Fields)
                         {
                             @await Html.PartialAsync("_Field", new FieldVm(f, null, null, "d-" + d.Id + "-"))
@@ -20,7 +38,8 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">Confirmar</button>
+                        <button type="submit" class="btn btn-primary" disabled="@(isBulkProjects || isBlockedClose)"
+                                data-selection-submit="@(isBulkProjects ? "true" : null)">Confirmar</button>
                     </div>
                 </form>
             </div>

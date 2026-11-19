@@ -49,6 +49,8 @@ public static class Catalog
     }
 
     public static Screen Get(string id) => ById[id];
+    public static string? DashboardId(string module) =>
+        All.FirstOrDefault(s => s.Module == module && !s.Route.Contains('/'))?.Id;
     public static string Url(string to, string? current = null) => Build(to, current, 0);
     public static string RowUrl(string to, int i) => Build(to, null, i);
 
@@ -98,14 +100,26 @@ public static class Catalog
     static SubTable T(string title, string? rowTo, params Col[] c) => new(title, c, rowTo);
     static Stat S(string l, string v) => new(l, v);
 
-    // ---------- Catálogo de las 39 pantallas ----------
+    // ---------- Catálogo de las 58 pantallas ----------
     static List<Screen> Build()
     {
         const string AUT = "Autenticación", HOM = "Inicio", DIS = "Gestión de desastres", DAM = "Evaluación de daños",
-                     PEO = "Personas afectadas", ORG = "Coordinación de organizaciones", REC = "Reconstrucción";
+                     PEO = "Personas afectadas", ORG = "Coordinación de organismos", REC = "Reconstrucción",
+                     RES = "Gestión de recursos", ADM = "Administración", AUD = "Auditoría", INT = "Integraciones";
 
         Screen M(string id, string mod, string title, string route, Kind k, char st, string api) =>
-            new() { Id = id, Module = mod, Title = title, Route = route, Kind = k, State = st, Api = api };
+            new()
+            {
+                Id = id, Module = mod, Title = title, Route = route, Kind = k, State = st, Api = api,
+                Intro = k switch
+                {
+                    Kind.Dashboard => $"Consulta la información principal de {mod.ToLowerInvariant()} y accede a sus herramientas.",
+                    Kind.List => "Consulta los registros disponibles y realiza las acciones de esta sección.",
+                    Kind.Detail => "Consulta la información y el historial de este registro.",
+                    Kind.Form => "Completa la información solicitada para continuar.",
+                    _ => null
+                }
+            };
 
         // Opciones compartidas
         const string sev = "1|2|3|4|5";
@@ -117,8 +131,19 @@ public static class Catalog
         const string desastres = "Sismo Armenia|Inundación Cali|Deslizamiento Manizales|Incendio Quibdó";
         const string prios = "Alta|Media|Baja";
         const string estTarea = "Pendiente|En curso|Completada";
+        const string categoriasOrg = "Mando y autoridades|Organismos de atención|Salud|Monitoreo y alerta|Geoespacial|Plataforma con solución parcial|Identidad y protección|Financiero y fiscal|Movilidad y transporte|Comunicación|Internacional|Control y auditoría|Donantes y contratistas";
+        const string ambitosOrg = "Nacional|Regional|Local|Internacional|Local/Regional";
+        const string estTareaOrg = "Creada|Asignada|Aceptada|En ejecución|Bloqueada|Completada|Rechazada|Cancelada";
+        const string estadosEjecucionOrg = "Pendiente|En ejecución|Completada|Bloqueada";
+        const string tiposTareaOrg = "Evaluación|Rescate|Atención médica|Logística|Evacuación|Monitoreo|Comunicación|Recuperación";
+        const string orgOptions = "UNGRD – Puesto de Mando Unificado|Alcaldías y gobernaciones|Bomberos|Policía Nacional|Defensa Civil|Cruz Roja Colombiana|Fuerzas Militares|Servicios médicos / Hospitales|MinSalud – REPS|Servicio Geológico Colombiano – SGC|IDEAM|Otros sistemas de monitoreo|IGAC / ICDE|Sahana Eden – instancia desplegada|Registraduría|UNGRD – RUD/RUNDA|ICBF|Pasarela de pago – Wompi, PSE|Sistemas financieros y de contratación – SECOP, SIIF|DIAN|RUNT|Proveedores de notificación|Organismos internacionales|Entes de control y auditores|Donantes y contratistas";
         const string estProy = "Draft|Formalized|Monitoring|Closed";
         const string canales = "SMS|Correo|Push";
+        const string categoriasRecursos = "Alimentos|Agua|Medicamentos|Vehículos|Maquinaria|Equipos de rescate|Personal|Refugios|Donaciones";
+        const string unidadesRecursos = "litros|kits|cajas|unidades|personas";
+        const string estadosRecursos = "Disponible|Asignado parcialmente|Agotado|En tránsito";
+        const string bodegas = "Bodega Armenia|Bodega Cali|Bodega Manizales|Bodega Quibdó";
+        const string nivelesAtencion = "Nivel_1 — Bajo|Nivel_2 — Medio|Nivel_3 — Alto|Nivel_4 — Crítico";
 
         // Columnas reutilizadas
         var disCols = new[]
@@ -159,13 +184,55 @@ public static class Catalog
             C("occurredAt", "Fecha", CT.Date),
             C("status", "Estado", CT.Badge, "Entregada|Pendiente|Fallida|Entregada"),
         };
+        var solicitudesRecursosCols = new[]
+        {
+            C("codigo", "Solicitud", s: "SOL-0101|SOL-0102|SOL-0103"),
+            C("desastre", "Desastre", s: desastres),
+            C("solicitante", "Solicitante", s: orgs),
+            C("recurso", "Recurso", s: "Agua potable|Carpas|Medicamentos|Camión cisterna"),
+            C("solicitada", "Solicitada", CT.Number), C("asignada", "Asignada", CT.Number),
+            C("prioridad", "Prioridad", CT.Badge, prios),
+            C("estado", "Estado", CT.Badge, "Pendiente|Aprobada|Asignada|Entregada|Rechazada"),
+            C("fecha", "Fecha", CT.Date),
+        };
         var activityDlg = new[]
         {
             F("name", "Nombre", req: true, max: 200),
+            F("organizationId", "Organismo", FT.Select, req: true, o: orgOptions),
+            F("disasterId", "Desastre", FT.Select, req: true, o: desastres),
             F("statusId", "Estado", FT.Select, o: estTarea),
             F("startsAt", "Inicio", FT.DateTime),
             F("endsAt", "Fin", FT.DateTime),
             F("comments", "Observaciones", FT.TextArea),
+        };
+        var orgTaskCols = new[]
+        {
+            C("name", "Tarea", s: "Despejar vía principal|Instalar refugio temporal|Distribuir agua y alimentos|Evaluar puente|Verificar centro de salud"),
+            C("disaster", "Desastre", s: desastres),
+            C("organization", "Organismo asignado", s: orgOptions),
+            C("suggestedPriority", "Prioridad sugerida", CT.Badge, prios),
+            C("confirmedPriority", "Prioridad confirmada", CT.Badge, prios),
+            C("status", "Estado", CT.Badge, estTareaOrg),
+            C("dueAt", "Vence", CT.Date),
+        };
+        var orgAlertCols = new[]
+        {
+            C("subject", "Asunto", s: "Cambio de mando|Emergencia secundaria|Reasignación de misión|Cambio de estado"),
+            C("type", "Tipo", CT.Badge, "Cambio de mando|Emergencia secundaria|Reasignación de misión|Cambio de estado"),
+            C("recipients", "Destinatarios", s: "Bomberos, Cruz Roja|Todos los organismos|Defensa Civil"),
+            C("channel", "Canal", CT.Badge, canales),
+            C("occurredAt", "Fecha", CT.Date),
+            C("deliveryStatus", "Estado de entrega", CT.Badge, "Entregada|Pendiente|Fallida"),
+        };
+        var orgAuditCols = new[]
+        {
+            C("occurredAt", "Fecha y hora", CT.Date),
+            C("actor", "Actor", s: "Coordinación|Organismo asignado|Sistema"),
+            C("action", "Acción", s: "Tarea creada|Prioridad confirmada|Avance registrado|Alerta enviada"),
+            C("task", "Tarea", s: "Despejar vía principal|Instalar refugio temporal"),
+            C("organization", "Organismo", s: orgOptions),
+            C("disaster", "Desastre", s: desastres),
+            C("result", "Resultado", s: "Aceptado|Pendiente|Completado"),
         };
         var projActCols = new[]
         {
@@ -180,28 +247,28 @@ public static class Catalog
         return new List<Screen>
         {
             // ===== 1. Autenticación =====
-            M("AUTH", AUT, "Inicio de sesión con segundo factor", "Cuenta/Acceder", Kind.Auth, 'N',
+            M("AUTH", AUT, "Acceso a la plataforma", "Cuenta/Acceder", Kind.Auth, 'N',
               "OIDC Authorization Code + PKCE, callback /signin-oidc (Keycloak)") with
             {
-                Intro = "Las credenciales, la recuperación de clave y el OTP los sirve Keycloak. Esta pantalla solo inicia el flujo.",
+                Intro = "Accede a la plataforma para consultar información y coordinar la atención de emergencias.",
                 Links = [L("Ingresar con Keycloak", "HOME", true)],
             },
 
             // ===== 2. Principal =====
-            M("HOME", HOM, "Dashboard general", "", Kind.Dashboard, 'A',
+            M("HOME", HOM, "Centro de operaciones", "", Kind.Dashboard, 'A',
               "GET /api/desastres; GET /api/reconstruccion/proyectos. Daños, personas y alertas son N/E") with
             {
+                Intro = "Consulta de un vistazo la situación de las emergencias y las alertas recientes.",
                 Stats = [S("Desastres activos", "3"), S("Evaluaciones", "128"), S("Personas afectadas", "1.240"), S("Proyectos", "12")],
                 Map = true,
                 TableTitle = "Alertas recientes",
                 Cols = alertCols,
-                Links = [L("Desastres", "DIS-01"), L("Daños", "DAM-01"), L("Personas", "PEO-01"),
-                         L("Organizaciones", "ORG-01"), L("Reconstrucción", "REC-01")],
             },
 
             // ===== 3. Gestión de desastres =====
-            M("DIS-01", DIS, "Dashboard de desastres", "Desastres", Kind.Dashboard, 'A', "GET /api/desastres (array). N geometria") with
+            M("DIS-01", DIS, "Resumen de desastres", "Desastres", Kind.Dashboard, 'A', "GET /api/desastres (array). N geometria") with
             {
+                Intro = "Consulta los desastres activos, su ubicación y las alertas de cada emergencia.",
                 Stats = [S("Activos", "3"), S("Críticos", "1")],
                 Map = true,
                 TableTitle = "Desastres recientes",
@@ -210,7 +277,7 @@ public static class Catalog
                 Filters = [F("tipo", "Tipo", o: "Terremoto|Inundación|Deslizamiento|Incendio"),
                            F("phase", "Fase", o: fases), F("ubicacion", "Zona", o: "Armenia|Cali|Manizales|Quibdó")],
                 Links = [L("Registrar desastre", "DIS-04", true), L("Listado", "DIS-02"),
-                         L("Fuentes", "DIS-05"), L("Organismos", "DIS-06"), L("Alertas", "DIS-07")],
+                         L("Fuentes", "DIS-05"), L("Organismos", "DIS-06"), L("Alertas", "DIS-07"), L("Evolución", "DIS-08")],
             },
             M("DIS-02", DIS, "Listado de desastres", "Desastres/Lista", Kind.List, 'A', "GET /api/desastres. No enviar query params no soportados") with
             {
@@ -247,7 +314,7 @@ public static class Catalog
                     D("geo", "Actualizar geometría", "Actualizar geometría",
                       F("geometria", "GeoJSON (Polygon o MultiPolygon)", FT.TextArea, req: true, hint: "Coordenadas [longitud, latitud]")),
                 ],
-                Links = [L("Daños", "DAM-01"), L("Personas", "PEO-01"), L("Reconstrucción", "REC-01"),
+                Links = [L("Daños", "DAM-01"), L("Personas", "PEO-01"), L("Reconstrucción", "REC-01"), L("Evolución", "DIS-08"),
                          L("Fuentes", "DIS-05"), L("Organismos", "DIS-06"), L("Alertas", "DIS-07")],
             },
             M("DIS-04", DIS, "Registro de desastre", "Desastres/Crear", Kind.Form, 'A',
@@ -298,10 +365,52 @@ public static class Catalog
                 Dialogs = [D("nueva", "Nueva alerta", "Nueva alerta", F("subject", "Asunto", req: true), F("message", "Mensaje", FT.TextArea, req: true),
                                 F("recipientIds", "Destinatarios", req: true, hint: "Separados por coma"))],
             },
+            M("DIS-08", DIS, "Evolución del evento", "Desastres/{id:int}/Evolucion", Kind.Dashboard, 'N',
+              "N GET /api/desastres/{id}/evolucion; POST .../area; PUT .../nivel") with
+            {
+                Intro = "Cómo ha cambiado el área afectada, el nivel de atención y el estado del evento.",
+                Stats =
+                [
+                    S("Nivel de atención actual", "Nivel_3 — Alto"), S("Estado", "En atención"),
+                    S("Zonas afectadas", "7 barrios"), S("Versiones del área", "4"),
+                ],
+                Map = true,
+                TableTitle = "Historial del área afectada",
+                Cols =
+                [
+                    C("registradoAt", "Fecha y hora", CT.Date), C("zonas", "Zonas afectadas", s: "3 barrios|5 barrios|7 barrios"),
+                    C("fuente", "Fuente", s: "Sistema GIS|Evaluación de campo|Organismo"),
+                    C("registradoPor", "Registrado por", s: "j.pardo|m.torres"),
+                    C("motivo", "Motivo", s: "Estimación inicial|Nueva evaluación|Réplica"),
+                ],
+                Tables =
+                [
+                    T("Línea de tiempo", null, C("occurredAt", "Fecha", CT.Date),
+                      C("evento", "Evento", s: "Estado|Nivel de atención|Área afectada"),
+                      C("antes", "Antes", s: "Registrado|Nivel_1|3 barrios"),
+                      C("despues", "Después", s: "En atención|Nivel_3|7 barrios"),
+                      C("actor", "Responsable", s: "j.pardo|m.torres"),
+                      C("motivo", "Motivo", s: "Nueva evaluación|Réplica|Ampliación de área")),
+                ],
+                Dialogs =
+                [
+                    D("area", "Actualizar área afectada", "Actualizar área afectada",
+                      F("descripcion", "Descripción de zonas", req: true),
+                      F("cantidad", "Cantidad de zonas", FT.Number, min: 0),
+                      F("geometria", "Geometría", FT.TextArea, hint: "Opcional"),
+                      F("fuente", "Fuente", FT.Select, o: "Sistema GIS|Evaluación de campo|Organismo"),
+                      F("motivo", "Motivo", FT.TextArea, req: true)),
+                    D("nivel", "Cambiar nivel de atención", "Cambiar nivel de atención",
+                      F("nivel", "Nivel de atención", FT.Select, req: true, o: nivelesAtencion),
+                      F("motivo", "Motivo", FT.TextArea, req: true)),
+                ],
+                Links = [L("Detalle del desastre", "DIS-03"), L("Alertas", "DIS-07")],
+            },
 
             // ===== 4. Evaluación de daños =====
-            M("DAM-01", DAM, "Dashboard de daños", "Danos", Kind.Dashboard, 'N', "N GET /api/evaluaciones/mapa?disasterId={id}; GET /api/evaluaciones?disasterId={id}") with
+            M("DAM-01", DAM, "Resumen de daños", "Danos", Kind.Dashboard, 'N', "N GET /api/evaluaciones/mapa?disasterId={id}; GET /api/evaluaciones?disasterId={id}") with
             {
+                Intro = "Consulta las evaluaciones de daños y el estado de los bienes afectados.",
                 Stats = [S("Evaluaciones", "128"), S("Daño grave o total", "23"), S("Por validar", "17")],
                 Map = true,
                 TableTitle = "Activos por nivel de daño",
@@ -311,7 +420,8 @@ public static class Catalog
                 RowTo = "DAM-03",
                 Filters = [F("disaster", "Desastre", o: desastres), F("assetType", "Tipo", o: "Puente|Escuela|Hospital|Vivienda"),
                            F("status", "Estado", o: "Validated|Draft|Rejected")],
-                Links = [L("Nueva evaluación", "DAM-04", true), L("Listado", "DAM-02"), L("Sincronización", "DAM-05")],
+                Links = [L("Nueva evaluación", "DAM-04", true), L("Listado", "DAM-02"), L("Sincronización", "DAM-05"),
+                         L("Validación", "DAM-06"), L("Priorización", "DAM-07")],
             },
             M("DAM-02", DAM, "Listado de evaluaciones", "Danos/Lista", Kind.List, 'N',
               "GET /api/evaluaciones?disasterId={id}. Respuesta {schemaVersion:1, disasterId, evaluations[]}") with
@@ -365,9 +475,9 @@ public static class Catalog
                     F("evidence", "Evidencias (fotos o documentos)", FT.File),
                 ],
             },
-            M("DAM-05", DAM, "Sincronización de campo", "Danos/Sincronizacion", Kind.List, 'N', "GET /api/evaluaciones/sincronizacion?disasterId={id}") with
+            M("DAM-05", DAM, "Evaluaciones recibidas del trabajo en campo", "Danos/Sincronizacion", Kind.List, 'N', "GET /api/evaluaciones/sincronizacion?disasterId={id}") with
             {
-                Intro = "Solo muestra lo que el servidor recibió. La cola local pertenece a la app Android.",
+                Intro = "Consulta las evaluaciones recibidas y revisa los conflictos que requieren atención.",
                 RowTo = "DAM-03",
                 Cols = [C("clientRequestId", "Operación", s: "a1f3…9c|b72e…01|c9d4…7a"), C("evaluationId", "Evaluación", s: "3f2b…11|8a90…42"),
                         C("receivedAt", "Recibida", CT.Date), C("status", "Estado", CT.Badge, "Applied|Conflict|Error|Applied"),
@@ -375,14 +485,66 @@ public static class Catalog
                 Filters = [F("status", "Estado", o: "Applied|Conflict|Error")],
                 Dialogs = [D("resolver", "Resolver conflicto", "Resolver conflicto", F("reason", "Motivo de la resolución", FT.TextArea, req: true))],
             },
+            M("DAM-06", DAM, "Validación de evaluaciones", "Danos/Validacion", Kind.List, 'N',
+              "N GET /api/evaluaciones?estado=Draft; PUT /api/evaluaciones/{id}/validacion") with
+            {
+                Intro = "Revisa evaluaciones pendientes, valida, rechaza o fusiona duplicados.",
+                Cols =
+                [
+                    evalCols.Single(c => c.Key == "assetId"), evalCols.Single(c => c.Key == "assetType"),
+                    evalCols.Single(c => c.Key == "location"), evalCols.Single(c => c.Key == "evaluator"),
+                    evalCols.Single(c => c.Key == "damageLevel"),
+                    C("duplicate", "Posible duplicado", CT.Badge, "Sí|No|No"),
+                    C("status", "Estado", CT.Badge, "Pendiente de validación|Validada|Rechazada"),
+                    evalCols.Single(c => c.Key == "evaluatedAt"),
+                ],
+                RowTo = "DAM-03",
+                Filters =
+                [
+                    F("status", "Estado", o: "Pendiente de validación|Validada|Rechazada"),
+                    F("duplicate", "Posible duplicado", o: "Sí|No"),
+                ],
+                Dialogs =
+                [
+                    D("validar", "Validar evaluación", "Validar evaluación",
+                      F("assetId", "Activo", req: true), F("comentario", "Comentario", FT.TextArea)),
+                    D("rechazar", "Rechazar evaluación", "Rechazar evaluación",
+                      F("assetId", "Activo", req: true), F("motivo", "Motivo", FT.TextArea, req: true)),
+                    D("duplicado", "Marcar como duplicado", "Marcar como duplicado",
+                      F("evaluacionDuplicada", "Evaluación duplicada", req: true),
+                      F("evaluacionOriginal", "Evaluación original", req: true),
+                      F("motivo", "Motivo", FT.TextArea, req: true)),
+                ],
+            },
+            M("DAM-07", DAM, "Priorización e impacto", "Danos/Priorizacion", Kind.Dashboard, 'N',
+              "N GET /api/evaluaciones/priorizacion?disasterId={id}") with
+            {
+                Intro = "Zonas y activos que requieren atención primero, con el costo estimado de recuperación.",
+                Stats =
+                [
+                    S("Activos destruidos", "42"), S("Daño grave", "118"),
+                    S("Costo estimado", "$ 18.400 millones"), S("Zonas críticas", "5"),
+                ],
+                Map = true, Chart = true, ChartTitle = "Activos afectados por zona",
+                TableTitle = "Zonas priorizadas",
+                Cols =
+                [
+                    C("zona", "Zona", s: "Armenia|Calarcá|Cali|Manizales"),
+                    C("activos", "Activos afectados", CT.Number), C("graves", "Graves o destruidos", CT.Number),
+                    C("personas", "Personas afectadas", CT.Number), C("costo", "Costo estimado", CT.Money),
+                    C("prioridad", "Prioridad", CT.Badge, prios),
+                ],
+                Links = [L("Crear propuesta de reconstrucción", "REC-02", true), L("Listado de evaluaciones", "DAM-02")],
+            },
 
             // ===== 5. Personas afectadas =====
-            M("PEO-01", PEO, "Dashboard de personas afectadas", "Personas", Kind.Dashboard, 'E', "E GET /api/personas-afectadas/resumen?disasterId={id}") with
+            M("PEO-01", PEO, "Resumen de personas afectadas", "Personas", Kind.Dashboard, 'E', "E GET /api/personas-afectadas/resumen?disasterId={id}") with
             {
+                Intro = "Consulta las cifras de personas y familias afectadas y las necesidades de atención.",
                 Stats = [S("Personas", "1.240"), S("Familias", "312"), S("Expedientes abiertos", "87"), S("Alojados", "540")],
                 Chart = true, ChartTitle = "Personas por zona",
                 Links = [L("Registrar persona", "PEO-03", true), L("Directorio", "PEO-02"), L("Detalle de ejemplo", "PEO-04"),
-                         L("Familias", "PEO-05")],
+                         L("Familias", "PEO-05"), L("Refugios", "PEO-07"), L("Solicitudes de ayuda", "PEO-09")],
             },
             M("PEO-02", PEO, "Directorio de personas", "Personas/Lista", Kind.List, 'E', "E GET /api/personas-afectadas?disasterId={id}&search=...") with
             {
@@ -430,65 +592,252 @@ public static class Catalog
                 Tables = [T("Miembros", "PEO-04", C("personId", "Persona", s: "María Gómez|Luis Gómez|Sara Gómez"), C("groupHead", "Jefe de grupo", CT.Badge, "Sí|No|No"))],
                 Dialogs = [D("asoc", "Editar asociación", "Editar asociación", F("personId", "Persona", req: true), F("groupHead", "Jefe de grupo", FT.Bool))],
             },
+            M("PEO-07", PEO, "Refugios", "Personas/Refugios", Kind.List, 'E', "E GET/POST /api/refugios?disasterId={id}") with
+            {
+                Intro = "Capacidad y ocupación de los refugios habilitados.",
+                Cols =
+                [
+                    C("nombre", "Refugio", s: "Coliseo Armenia|Colegio Normal Calarcá|Polideportivo Cali Sur|Coliseo Manizales"),
+                    C("ubicacion", "Ubicación", s: "Armenia|Calarcá|Cali|Manizales"), C("capacidad", "Capacidad", CT.Number),
+                    C("ocupacion", "Ocupación", CT.Number), C("responsable", "Responsable", s: "Cruz Roja|Defensa Civil|Autoridad local"),
+                    C("estado", "Estado", CT.Badge, "Abierto|Lleno|Cerrado"),
+                ],
+                RowTo = "PEO-08",
+                Filters = [F("estado", "Estado", o: "Abierto|Lleno|Cerrado")],
+                Dialogs =
+                [
+                    D("crear", "Registrar refugio", "Registrar refugio", F("nombre", "Nombre", req: true),
+                      F("ubicacion", "Ubicación", req: true),
+                      F("capacidad", "Capacidad", FT.Number, req: true, min: 1),
+                      F("responsable", "Responsable", FT.Select, req: true, o: orgs),
+                      F("latitud", "Latitud", FT.Number, min: -90, hi: 90),
+                      F("longitud", "Longitud", FT.Number, min: -180, hi: 180)),
+                ],
+                Links = [L("Registrar solicitud de ayuda", "PEO-09", true), L("Directorio", "PEO-02")],
+            },
+            M("PEO-08", PEO, "Detalle de refugio", "Personas/Refugios/{id:guid}", Kind.Detail, 'E',
+              "E GET /api/refugios/{id}; PUT /api/refugios/{id}/ocupacion") with
+            {
+                Cols =
+                [
+                    C("nombre", "Refugio", s: "Coliseo Armenia"), C("ubicacion", "Ubicación", s: "Armenia"),
+                    C("capacidad", "Capacidad", CT.Number), C("ocupacion", "Ocupación", CT.Number),
+                    C("responsable", "Responsable", s: "Cruz Roja"), C("estado", "Estado", CT.Badge, "Abierto"),
+                    C("contacto", "Contacto", s: "300 555 0142"),
+                ],
+                Tables =
+                [
+                    T("Personas alojadas", "PEO-04", C("persona", "Persona", s: "María Gómez|Juan Pérez|Ana Rojas"),
+                      C("familia", "Familia", s: "Familia Gómez|Familia Pérez"), C("fechaIngreso", "Ingreso", CT.Date)),
+                    T("Recursos asignados", null, C("recurso", "Recurso", s: "Kit de alimentos|Agua potable|Colchonetas"),
+                      C("cantidad", "Cantidad", CT.Number), C("fecha", "Fecha", CT.Date),
+                      C("estado", "Estado", CT.Badge, "Asignado|Entregado|Pendiente")),
+                ],
+                Dialogs =
+                [
+                    D("ocupacion", "Actualizar ocupación", "Actualizar ocupación",
+                      F("ocupacion", "Ocupación", FT.Number, req: true, min: 0),
+                      F("observaciones", "Observaciones", FT.TextArea)),
+                ],
+            },
+            M("PEO-09", PEO, "Solicitudes de ayuda y atención", "Personas/Solicitudes", Kind.List, 'E',
+              "E GET/POST /api/personas-afectadas/solicitudes-ayuda; POST .../atenciones") with
+            {
+                Intro = "Información protegida. El acceso se controla por rol y organización.",
+                Cols =
+                [
+                    C("codigo", "Solicitud", s: "AYU-0201|AYU-0202|AYU-0203"),
+                    C("solicitante", "Persona o familia", s: "María Gómez|Familia Rojas|Carlos Díaz"),
+                    C("necesidad", "Necesidad", s: "Alimentos|Agua|Medicamentos|Alojamiento|Transporte|Atención psicosocial"),
+                    C("ubicacion", "Ubicación", s: "Armenia|Calarcá|Cali|Manizales"),
+                    C("prioridad", "Prioridad", CT.Badge, prios), C("organismo", "Organismo asignado", s: orgs),
+                    C("estado", "Estado", CT.Badge, "Pendiente|En atención|Atendida"), C("fecha", "Fecha", CT.Date),
+                ],
+                Filters =
+                [
+                    F("necesidad", "Necesidad", o: "Alimentos|Agua|Medicamentos|Alojamiento|Transporte|Atención psicosocial"),
+                    F("prioridad", "Prioridad", o: prios), F("estado", "Estado", o: "Pendiente|En atención|Atendida"),
+                ],
+                Dialogs =
+                [
+                    D("nueva", "Registrar solicitud de ayuda", "Registrar solicitud de ayuda",
+                      F("solicitante", "Persona o familia", req: true),
+                      F("necesidad", "Necesidad", FT.Select, req: true, o: "Alimentos|Agua|Medicamentos|Alojamiento|Transporte|Atención psicosocial"),
+                      F("prioridad", "Prioridad", FT.Select, req: true, o: prios),
+                      F("ubicacion", "Ubicación"),
+                      F("descripcion", "Descripción", FT.TextArea)),
+                    D("atencion", "Registrar atención", "Registrar atención",
+                      F("codigo", "Código de solicitud", req: true),
+                      F("tipo", "Tipo de atención", FT.Select, req: true, o: "Entrega de ayuda|Alojamiento|Atención médica|Acompañamiento"),
+                      F("organismo", "Organismo", FT.Select, req: true, o: orgs),
+                      F("fecha", "Fecha y hora", FT.DateTime),
+                      F("observaciones", "Observaciones", FT.TextArea)),
+                ],
+            },
 
             // ===== 6. Coordinación de organizaciones =====
             M("ORG-01", ORG, "Directorio de organizaciones", "Organizaciones", Kind.List, 'E', "E GET /api/organizaciones; GET /api/organizaciones/tipos") with
             {
+                Intro = "Consulta los organismos participantes, su ámbito, responsabilidades e integración con la plataforma.",
                 RowTo = "ORG-02",
-                Cols = [C("name", "Nombre", s: "Cruz Roja Colombiana|Defensa Civil|Bomberos Bogotá|Policía Nacional|Secretaría de Salud"),
-                        C("acronym", "Sigla", s: "CRC|DCC|BB|PN|SDS"), C("typeId", "Tipo", s: "ONG|Gubernamental|Seguridad|Seguridad|Salud"),
-                        C("locationId", "Zona", s: "Nacional|Bogotá|Quindío"), C("email", "Contacto", s: "contacto@org.co")],
-                Filters = [F("typeId", "Tipo", o: "ONG|Gubernamental|Seguridad|Salud")],
-                Links = [L("Registrar organización", "ORG-03", true), L("Tareas", "ORG-04"), L("Actividades", "ORG-05"), L("Alertas", "ORG-06")],
+                Cols = [C("name", "Nombre"), C("acronym", "Sigla"), C("category", "Categoría"),
+                        C("scope", "Ámbito"), C("role", "Rol en la respuesta"), C("integration", "Integración"),
+                        C("status", "Estado", CT.Badge, "Activo|Inactivo")],
+                Filters = [F("category", "Categoría", o: categoriasOrg),
+                           F("scope", "Ámbito", o: ambitosOrg),
+                           F("status", "Estado", o: "Activo|Inactivo")],
+                Links = [L("Registrar organización", "ORG-03", true), L("Tareas", "ORG-04"), L("Actividades", "ORG-05"),
+                         L("Alertas", "ORG-06"), L("Bitácora", "ORG-07")],
             },
             M("ORG-02", ORG, "Detalle de organización", "Organizaciones/{id}", Kind.Detail, 'E', "E GET/PUT /api/organizaciones/{id}") with
             {
-                Cols = [C("name", "Nombre", s: "Cruz Roja Colombiana"), C("acronym", "Sigla", s: "CRC"), C("typeId", "Tipo", s: "ONG"),
-                        C("country", "País", s: "Colombia"), C("locationId", "Ubicación", s: "Bogotá"), C("phone", "Teléfono", s: "601 555 0100"),
-                        C("email", "Correo", s: "contacto@cruzroja.org.co"), C("description", "Descripción", s: "Atención humanitaria y primeros auxilios.")],
-                Tables = [T("Personal", null, C("name", "Nombre", s: "A. Vargas|R. Castro"), C("rol", "Rol", s: "Coordinador|Paramédico")),
-                          T("Instalaciones", null, C("name", "Instalación", s: "Sede Armenia|Bodega central"), C("ubicacion", "Ubicación", s: "Armenia|Bogotá")),
-                          T("Desastres asociados", "DIS-03", C("nombre", "Desastre", s: desastres), C("phase", "Fase", CT.Badge, "Response|Registered"))],
-                Dialogs = [D("editar", "Editar", "Editar organización", F("name", "Nombre", req: true), F("acronym", "Sigla"), F("phone", "Teléfono", FT.Phone), F("email", "Correo", FT.Email))],
-                Links = [L("Tareas", "ORG-04"), L("Actividades", "ORG-05")],
+                Intro = "Consulta la participación, responsabilidad e integración de este organismo. Las acciones dependen del rol y la organización asignada.",
+                Cols = [C("name", "Nombre"), C("acronym", "Sigla"), C("category", "Categoría"), C("scope", "Ámbito"),
+                        C("country", "País"), C("location", "Ubicación"), C("phone", "Teléfono"), C("email", "Correo"),
+                        C("description", "Descripción"), C("actors", "Actores asociados"), C("channel", "Canal")],
+                Tables =
+                [
+                    T("Responsabilidad por desastre", "DIS-03",
+                      C("disaster", "Desastre", s: desastres), C("responsibility", "Responsabilidad"),
+                      C("activatedAt", "Fecha de activación", CT.Date), C("status", "Estado", CT.Badge, "Activo|En espera")),
+                    T("Tareas asignadas", "ORG-08",
+                      C("name", "Tarea", s: "Despejar vía principal|Instalar refugio temporal"),
+                      C("confirmedPriority", "Prioridad confirmada", CT.Badge, prios),
+                      C("status", "Estado", CT.Badge, estTareaOrg), C("dueAt", "Vence", CT.Date)),
+                    T("Integración con la plataforma", null,
+                      C("system", "Sistema"), C("direction", "Dirección"), C("mechanism", "Mecanismo"),
+                      C("information", "Información intercambiada"), C("modules", "Módulos")),
+                    T("Personal e instalaciones", null,
+                      C("name", "Equipo", s: "Coordinación de emergencias|Equipo de respuesta"),
+                      C("role", "Rol", s: "Coordinación|Atención en terreno"),
+                      C("installation", "Instalación", s: "Centro de coordinación|Puesto local")),
+                ],
+                Dialogs =
+                [
+                    D("editar", "Editar", "Editar organización",
+                      F("name", "Nombre", req: true), F("acronym", "Sigla"),
+                      F("phone", "Teléfono", FT.Phone), F("email", "Correo", FT.Email)),
+                    D("activar", "Activar en un desastre", "Activar organización en un desastre",
+                      F("disasterId", "Desastre", FT.Select, req: true, o: desastres),
+                      F("responsibility", "Responsabilidad", req: true)),
+                    D("desactivar", "Desactivar", "Desactivar organización")
+                        with { ConfirmationText = "¿Confirmas la desactivación de esta organización?" },
+                ],
+                Links = [L("Tareas", "ORG-04"), L("Actividades", "ORG-05"), L("Alertas", "ORG-06"), L("Bitácora", "ORG-07")],
             },
             M("ORG-03", ORG, "Registro de organizaciones", "Organizaciones/Crear", Kind.Form, 'E', "E POST /api/organizaciones; GET /api/organizaciones/tipos") with
             {
+                Intro = "Registra un organismo que participe en la respuesta o que intercambie información con la plataforma.",
                 SaveTo = "ORG-02", CancelTo = "ORG-01",
-                Fields = [F("name", "Nombre", req: true), F("acronym", "Sigla"), F("typeId", "Tipo", FT.Select, req: true, o: "ONG|Gubernamental|Seguridad|Salud|Internacional"),
-                          F("country", "País"), F("locationId", "Zona"), F("phone", "Teléfono", FT.Phone), F("email", "Correo", FT.Email),
+                Fields = [F("name", "Nombre", req: true), F("acronym", "Sigla"),
+                          F("category", "Categoría", FT.Select, req: true, o: categoriasOrg),
+                          F("scope", "Ámbito", FT.Select, req: true, o: ambitosOrg),
+                          F("country", "País"), F("location", "Zona"), F("phone", "Teléfono", FT.Phone), F("email", "Correo", FT.Email),
                           F("description", "Descripción", FT.TextArea)],
             },
             M("ORG-04", ORG, "Coordinación de tareas", "Organizaciones/Tareas", Kind.List, 'E', "E GET/POST /api/coordinacion/tareas; PUT /api/coordinacion/tareas/{id}") with
             {
-                Cols = taskCols,
-                Filters = [F("priorityId", "Prioridad", o: prios), F("statusId", "Estado", o: estTarea)],
-                Dialogs = [D("nueva", "Nueva tarea", "Nueva tarea", F("name", "Nombre", req: true), F("description", "Descripción", FT.TextArea),
-                                F("priorityId", "Prioridad", FT.Select, req: true, o: prios), F("assignee", "Responsable"), F("dueAt", "Vencimiento", FT.DateTime),
-                                F("disasterId", "Desastre", FT.Select, o: desastres))],
+                Intro = "Coordina tareas según los permisos del rol y la organización asignada; confirma su prioridad y seguimiento.",
+                TableTitle = "Tareas coordinadas",
+                RowTo = "ORG-08",
+                Cols = orgTaskCols,
+                Filters = [F("confirmedPriority", "Prioridad", o: prios),
+                           F("status", "Estado", o: estTareaOrg),
+                           F("disaster", "Desastre", o: desastres)],
+                Dialogs =
+                [
+                    D("nueva", "Nueva tarea", "Nueva tarea",
+                      F("name", "Nombre", req: true, max: 200), F("description", "Descripción", FT.TextArea, max: 1000),
+                      F("disasterId", "Desastre", FT.Select, req: true, o: desastres),
+                      F("organizationId", "Organismo asignado", FT.Select, req: true, o: orgOptions),
+                      F("taskType", "Tipo de tarea", FT.Select, req: true, o: tiposTareaOrg),
+                      F("suggestedPriority", "Prioridad sugerida", FT.Select, req: true, o: prios),
+                      F("dueAt", "Vencimiento", FT.DateTime, req: true)),
+                ],
+                Links = [L("Directorio", "ORG-01"), L("Bitácora", "ORG-07")],
+            },
+            M("ORG-08", ORG, "Detalle de tarea", "Organizaciones/Tareas/{id}", Kind.Detail, 'E',
+              "E GET/PUT /api/coordinacion/tareas/{id}; POST /api/coordinacion/tareas/{id}/avances") with
+            {
+                Intro = "Consulta el estado, la responsabilidad y los avances de una tarea coordinada. Las acciones dependen del rol y la organización asignada.",
+                Cols =
+                [
+                    C("name", "Tarea"), C("description", "Descripción"), C("disaster", "Desastre"),
+                    C("organization", "Organismo asignado"), C("suggestedPriority", "Prioridad sugerida"),
+                    C("confirmedPriority", "Prioridad confirmada"), C("status", "Estado", CT.Badge, estTareaOrg),
+                    C("dueAt", "Vence", CT.Date), C("version", "Versión", CT.Number),
+                ],
+                Tables =
+                [
+                    T("Avances y evidencias", null, C("occurredAt", "Fecha", CT.Date), C("author", "Autor"),
+                      C("report", "Informe"), C("executionStatus", "Estado de ejecución", CT.Badge, estadosEjecucionOrg),
+                      C("evidence", "Evidencias")),
+                    T("Historial de la tarea", null, C("occurredAt", "Fecha", CT.Date), C("actor", "Actor"),
+                      C("action", "Acción"), C("result", "Resultado"), C("version", "Versión", CT.Number)),
+                ],
+                Dialogs =
+                [
+                    D("aceptar", "Aceptar", "Aceptar tarea"),
+                    D("rechazar", "Rechazar", "Rechazar tarea",
+                      F("justification", "Justificación", FT.TextArea, req: true, max: 1000)),
+                    D("reasignar", "Reasignar", "Reasignar tarea",
+                      F("organizationId", "Organismo", FT.Select, req: true, o: orgOptions),
+                      F("justification", "Justificación", FT.TextArea, req: true, max: 1000)),
+                    D("prioridad", "Confirmar o cambiar prioridad", "Confirmar o cambiar prioridad",
+                      F("confirmedPriority", "Prioridad", FT.Select, req: true, o: prios),
+                      F("justification", "Justificación", FT.TextArea, req: true, max: 1000)),
+                    D("avance", "Registrar avance", "Registrar avance",
+                      F("report", "Informe", FT.TextArea, req: true, max: 2000),
+                      F("executionStatus", "Estado de ejecución", FT.Select, o: estadosEjecucionOrg),
+                      F("evidence", "Evidencias", FT.File)),
+                ],
+                Links = [L("Tareas", "ORG-04"), L("Bitácora", "ORG-07")],
             },
             M("ORG-05", ORG, "Seguimiento de actividades", "Organizaciones/Actividades", Kind.List, 'E', "E GET/POST /api/coordinacion/actividades; PUT .../{id}") with
             {
-                Cols = [C("name", "Actividad", s: "Reparto de alimentos|Censo en refugio|Ruta de evacuación"), C("statusId", "Estado", CT.Badge, estTarea),
-                        C("contactPersonId", "Contacto", s: "A. Vargas|R. Castro"), C("startsAt", "Inicio", CT.Date), C("endsAt", "Fin", CT.Date),
-                        C("comments", "Observaciones", s: "Avance del 40 %|Sin novedades")],
+                Intro = "Consulta las actividades coordinadas entre organismos durante la respuesta.",
+                Cols = [C("name", "Actividad", s: "Reparto de alimentos|Censo en refugio|Ruta de evacuación"),
+                        C("organization", "Organismo", s: orgOptions), C("disaster", "Desastre", s: desastres),
+                        C("statusId", "Estado", CT.Badge, estTarea), C("contact", "Contacto"),
+                        C("startsAt", "Inicio", CT.Date), C("endsAt", "Fin", CT.Date), C("comments", "Observaciones")],
                 Filters = [F("statusId", "Estado", o: estTarea)],
                 Dialogs = [D("nueva", "Nueva actividad", "Nueva actividad", activityDlg)],
             },
             M("ORG-06", ORG, "Historial de alertas y comunicaciones", "Organizaciones/Alertas", Kind.List, 'E', "E GET/POST /api/coordinacion/alertas") with
             {
-                Cols = alertCols,
-                Filters = [F("channel", "Canal", o: canales), F("status", "Estado", o: "Entregada|Pendiente|Fallida")],
-                Dialogs = [D("nueva", "Nueva alerta", "Nueva alerta", F("subject", "Asunto", req: true), F("message", "Mensaje", FT.TextArea, req: true),
-                                F("channel", "Canal", FT.Select, o: canales), F("recipientIds", "Destinatarios", req: true))],
-                Links = [L("Directorio", "ORG-01")],
+                Intro = "Consulta las comunicaciones enviadas a los organismos y conserva el estado de entrega.",
+                Cols = orgAlertCols,
+                Filters = [F("channel", "Canal", o: canales),
+                           F("deliveryStatus", "Estado de entrega", o: "Entregada|Pendiente|Fallida"),
+                           F("type", "Tipo", o: "Cambio de mando|Emergencia secundaria|Reasignación de misión|Cambio de estado")],
+                Dialogs =
+                [
+                    D("nueva", "Nueva alerta", "Nueva alerta",
+                      F("subject", "Asunto", req: true), F("type", "Tipo", FT.Select, req: true,
+                          o: "Cambio de mando|Emergencia secundaria|Reasignación de misión|Cambio de estado"),
+                      F("recipients", "Destinatarios", req: true), F("channel", "Canal", FT.Select, req: true, o: canales),
+                      F("message", "Mensaje", FT.TextArea, req: true)),
+                ],
+                Links = [L("Directorio", "ORG-01"), L("Bitácora", "ORG-07")],
+            },
+            M("ORG-07", ORG, "Bitácora de actividades", "Organizaciones/Bitacora", Kind.List, 'E',
+              "E GET /api/coordinacion/bitacora") with
+            {
+                Intro = "Registro inmutable de acciones, órdenes y avances.",
+                TableTitle = "Bitácora",
+                Cols = orgAuditCols,
+                Filters = [F("task", "Tarea", o: "Despejar vía principal|Instalar refugio temporal"),
+                           F("organization", "Organismo", o: orgOptions),
+                           F("disaster", "Desastre", o: desastres)],
             },
 
             // ===== 7. Reconstrucción =====
-            M("REC-01", REC, "Dashboard de reconstrucción", "Reconstruccion", Kind.Dashboard, 'A',
+            M("REC-01", REC, "Resumen de reconstrucción", "Reconstruccion", Kind.Dashboard, 'A',
               "GET /api/reconstruccion/propuestas y /proyectos?disasterId={id}. N mapa DAM-01") with
             {
-                Stats = [S("Propuestas", "24"), S("En ejecución", "9"), S("Cerrados", "3"), S("Presupuesto", "$ 12.400 M")],
+                Intro = "Consulta las propuestas, los proyectos en curso y los recursos destinados a la recuperación.",
+                Stats = [S("Propuestas", "24"), S("En formalización", "4"), S("En monitoreo", "9"), S("Cerrados", "3"),
+                         S("Presupuesto disponible de donaciones", "$ 12.400 M")],
                 Map = true, TableTitle = "Propuestas", RowTo = "REC-03",
                 Cols = [C("disaster", "Desastre", s: desastres), C("zone", "Zona", s: "Armenia|Calarcá|Cali|Manizales"),
                         C("assetType", "Activo", s: "Puente|Escuela|Hospital|Vivienda"), C("damage", "Daño", CT.Badge, "Destroyed|Severe|Severe|Moderate"),
@@ -499,19 +848,36 @@ public static class Catalog
             M("REC-02", REC, "Propuestas de reconstrucción", "Reconstruccion/Propuestas", Kind.List, 'A',
               "GET /api/reconstruccion/propuestas?disasterId={id}; POST .../propuestas/generar {disasterId}") with
             {
+                Intro = "Zona, activo y nivel de daño con su prioridad según el presupuesto disponible de donaciones. Selecciona las propuestas que se convertirán en proyectos.",
+                Stage = 1,
+                Selectable = true,
                 RowTo = "REC-03",
                 Cols = [C("zone", "Zona", s: "Armenia|Calarcá|Cali|Manizales"), C("assetType", "Activo", s: "Puente|Escuela|Hospital|Vivienda"),
                         C("damage", "Daño", CT.Badge, "Destroyed|Severe|Severe|Moderate"), C("priority", "Prioridad", CT.Badge, "High|Low|Unassigned|High"),
+                        C("resultado", "Resultado"),
                         C("proposedBudget", "Presupuesto", CT.Money), C("status", "Estado", CT.Badge, "Proposed|Selected|Proposed|Obsolete")],
-                Filters = [F("status", "Estado", o: "Proposed|Selected|Obsolete"), F("priority", "Prioridad", o: "High|Low|Unassigned")],
-                Dialogs = [D("generar", "Generar propuestas", "Generar propuestas", F("disasterId", "Desastre", FT.Select, req: true, o: desastres))],
+                Filters = [F("zone", "Zona", FT.Select, o: "Armenia|Calarcá|Cali|Manizales"),
+                           F("assetType", "Activo", FT.Select, o: "Puente|Escuela|Hospital|Vivienda"),
+                           F("damage", "Daño", FT.Select, o: danio),
+                           F("status", "Estado", FT.Select, o: "Proposed|Selected|Obsolete"),
+                           F("priority", "Prioridad", FT.Select, o: "High|Low|Unassigned")],
+                Dialogs =
+                [
+                    D("generar", "Generar propuestas", "Generar propuestas",
+                        F("disasterId", "Desastre", FT.Select, req: true, hint: "Solo desastres en estado Reconstrucción", o: desastres)),
+                    D("proyectos", "Crear proyectos", "Crear proyectos"),
+                ],
             },
             M("REC-03", REC, "Detalle de propuesta", "Reconstruccion/Propuestas/{id:guid}", Kind.Detail, 'A',
               "Localizar el id en GET /api/reconstruccion/propuestas (no hay GET individual); POST /api/reconstruccion/proyectos") with
             {
+                Stage = 1,
                 Cols = [C("zone", "Zona", s: "Calarcá"), C("assetType", "Activo", s: "Puente"), C("damage", "Daño", CT.Badge, "Destroyed"),
                         C("assessmentCount", "Evaluaciones", CT.Number), C("proposedBudget", "Presupuesto", CT.Money),
+                        C("availableBudget", "Presupuesto disponible (donaciones)", CT.Money, "$ 8.400 M"),
+                        C("coversBudget", "Cubre el presupuesto propuesto", CT.Badge, "Sí"),
                         C("averageSeverity", "Severidad media", s: "4,2"), C("priority", "Prioridad", CT.Badge, "High"),
+                        C("resultado", "Resultado", s: "Se prioriza proyecto"),
                         C("status", "Estado", CT.Badge, "Proposed"), C("version", "Versión", CT.Number)],
                 Tables = [T("Evaluaciones origen", "DAM-03", C("assetId", "Activo", s: "PUENTE-014|PUENTE-015"), C("damageLevel", "Daño", CT.Badge, "Destroyed|Severe"),
                             C("evaluator", "Evaluador", s: "L. Ramírez|M. Torres"), C("budget", "Presupuesto", CT.Money), C("revision", "Rev.", CT.Number))],
@@ -533,29 +899,44 @@ public static class Catalog
                         C("responsible", "Responsable", s: "Ing. Rojas"), C("contractor", "Contratista", s: "Constructora Andina"),
                         C("status", "Estado", CT.Badge, "Monitoring"), C("version", "Versión", CT.Number), C("createdAt", "Creado", CT.Date),
                         C("isBudgetLocked", "Presupuesto bloqueado", s: "Sí"), C("signedContractReference", "Contrato", s: "CT-2026-0418"),
-                        C("progressPercentage", "Avance", s: "45 %"), C("totalCost", "Costo acumulado", CT.Money),
-                        C("remainingBudget", "Saldo", CT.Money), C("canFinalize", "Puede cerrarse", CT.Badge, "No")],
+                        C("progressPercentage", "Avance", s: "45 %"), C("totalCost", "Costo acumulado", CT.Money, "$ 1.890 M"),
+                        C("remainingBudget", "Saldo", CT.Money, "$ 2.310 M"), C("canFinalize", "Puede cerrarse", CT.Badge, "No")],
                 Tables = [T("Actividades contractuales", null, projActCols),
+                          T("Reportes consolidados", null, C("activity", "Actividad", s: "Demolición|Cimentación|Estructura|Acabados|Entrega"),
+                            C("status", "Estado reportado", CT.Badge, "Completed|InProgress|Pending|Pending|Pending"),
+                            C("actualCost", "Costo reportado", CT.Money), C("reportCount", "Reportes", CT.Number, "1|1|1|0|0"),
+                            C("evidenceCount", "Evidencias", CT.Number, "2|1|1|0|0"), C("complete", "Completo", CT.Badge, "Sí|Sí|No|No|No")),
                           T("Auditoría", null, C("occurredAt", "Fecha", CT.Date), C("actor", "Actor", s: "j.pardo|m.torres"),
-                            C("accion", "Acción", s: "Cambio de presupuesto|Registro de contrato|Reporte de avance"))],
+                            C("accion", "Acción", s: "Cambio de presupuesto|Registro de contrato|Reporte de avance")),
+                          T("Línea de tiempo", null, C("occurredAt", "Fecha", CT.Date),
+                            C("event", "Evento", s: "Proyecto creado|Formalización confirmada|Contrato registrado|Reporte de actividad"),
+                            C("actor", "Responsable", s: "j.pardo|m.torres"))],
                 Links = [L("Formalización", "REC-06"), L("Contrato", "REC-07"), L("Cronograma", "REC-08"), L("Tareas", "REC-09"),
-                         L("Participantes", "REC-10"), L("Finanzas", "REC-11"), L("Reportes", "REC-12"), L("Cierre", "REC-13")],
+                         L("Participantes", "REC-10"), L("Finanzas", "REC-11"), L("Reportes", "REC-12"), L("Cierre", "REC-13"),
+                         L("Seguimiento con la entidad", "REC-15"), L("Historial de cambios", "AUD-01")],
             },
             M("REC-06", REC, "Formalización del proyecto", "Reconstruccion/Proyectos/{id:guid}/Formalizacion", Kind.Form, 'A',
               "GET /api/reconstruccion/financiacion?disasterId={id}; PUT P/formalizacion; POST P/confirmar-formalizacion") with
             {
+                Stage = 2,
                 SaveTo = "REC-05", CancelTo = "REC-05",
                 Fields =
                 [
-                    F("finalBudget", "Presupuesto final (COP)", FT.Number, req: true, min: 1),
+                    F("finalBudget", "Presupuesto final (COP)", FT.Number, req: true, min: 0.01,
+                        hint: "Presupuesto sugerido: $ 4.200 M, el de la entidad elegida."),
                     F("fundingSource", "Fuente de financiación", FT.Select, req: true, o: "Presupuesto nacional|Donaciones|Cooperación internacional"),
                     F("responsible", "Responsable", req: true, max: 200), F("contractor", "Contratista", req: true, max: 200),
-                    F("activities", "Actividades", FT.TextArea, req: true, hint: "Una por línea: nombre; responsable; inicio; vencimiento; presupuesto. La suma no puede superar el presupuesto final"),
+                    F("activities", "Cronograma", FT.TextArea, req: true),
                 ],
-                Links = [L("Registrar contrato", "REC-07")],
+                Dialogs = [D("confirmar", "Confirmar formalización", "Confirmar formalización") with
+                {
+                    ConfirmationText = "Se reservará el presupuesto y el proyecto pasará a monitoreo. No podrás editar el presupuesto sin registrar un motivo."
+                }],
+                Links = [L("Entidades y presupuestos", "REC-14"), L("Registrar contrato", "REC-07")],
             },
             M("REC-07", REC, "Contrato firmado", "Reconstruccion/Proyectos/{id:guid}/Contrato", Kind.Form, 'A', "POST P/contrato-firmado; GET P") with
             {
+                Stage = 2,
                 Intro = "Registra la referencia de un contrato ya firmado. No hay firma electrónica.",
                 SaveTo = "REC-05", CancelTo = "REC-05",
                 Fields = [F("contractReference", "Referencia del contrato", req: true, max: 1000),
@@ -564,15 +945,20 @@ public static class Catalog
             M("REC-08", REC, "Cronograma y actividades", "Reconstruccion/Proyectos/{id:guid}/Cronograma", Kind.List, 'A',
               "A GET P/monitoreo; E GET/POST P/actividades-operativas; PUT .../{activityId}") with
             {
-                TableTitle = "Actividades contractuales (.NET)",
+                Stage = 3,
+                Intro = "El estado de cada actividad se actualiza al registrar su reporte.",
+                TableTitle = "Actividades del cronograma",
                 Cols = projActCols,
                 Tables = [T("Actividades operativas", null, C("name", "Actividad", s: "Montaje de obra|Señalización"), C("statusId", "Estado", CT.Badge, estTarea),
                             C("startsAt", "Inicio", CT.Date), C("endsAt", "Fin", CT.Date), C("contactPersonId", "Contacto", s: "A. Vargas"))],
-                Dialogs = [D("nueva", "Nueva actividad operativa", "Nueva actividad operativa", activityDlg)],
+                Dialogs = [D("nueva", "Nueva actividad operativa", "Nueva actividad operativa",
+                    F("name", "Nombre", req: true, max: 200), F("responsible", "Responsable", req: true, max: 200),
+                    F("startsAt", "Inicio", FT.DateTime), F("endsAt", "Fin", FT.DateTime), F("comments", "Observaciones", FT.TextArea))],
                 Links = [L("Tareas", "REC-09"), L("Reportes", "REC-12"), L("Proyecto", "REC-05")],
             },
             M("REC-09", REC, "Gestión de tareas", "Reconstruccion/Proyectos/{id:guid}/Tareas", Kind.List, 'E', "E GET/POST P/tareas; PUT P/tareas/{taskId}") with
             {
+                Stage = 3,
                 Cols = taskCols,
                 Filters = [F("priorityId", "Prioridad", o: prios), F("statusId", "Estado", o: estTarea)],
                 Dialogs = [D("nueva", "Nueva tarea", "Nueva tarea", F("name", "Nombre", req: true), F("description", "Descripción", FT.TextArea),
@@ -582,6 +968,7 @@ public static class Catalog
             },
             M("REC-10", REC, "Participantes", "Reconstruccion/Proyectos/{id:guid}/Participantes", Kind.List, 'E', "E GET/POST P/participantes; PUT P/participantes/{participantId}") with
             {
+                Stage = 3,
                 RowTo = "ORG-02",
                 Cols = [C("name", "Nombre", s: "Constructora Andina|Cruz Roja|Ing. Rojas|Interventoría Sur"), C("kind", "Tipo", CT.Badge, "Organización|Organización|Persona|Organización"),
                         C("roleId", "Rol", s: "Contratista|Apoyo social|Líder técnico|Interventor"), C("statusId", "Estado", CT.Badge, "Activo|En espera")],
@@ -591,6 +978,7 @@ public static class Catalog
             },
             M("REC-11", REC, "Monitoreo financiero", "Reconstruccion/Proyectos/{id:guid}/Finanzas", Kind.Dashboard, 'A', "GET P/monitoreo; PUT P/presupuesto") with
             {
+                Stage = 3,
                 Stats = [S("Presupuesto", "$ 4.200 M"), S("Gasto", "$ 1.890 M"), S("Saldo", "$ 2.310 M")],
                 Chart = true, ChartTitle = "Gasto por actividad (millones COP)",
                 TableTitle = "Por actividad",
@@ -598,32 +986,354 @@ public static class Catalog
                         C("actualCost", "Costo real", CT.Money), C("remainingBudget", "Saldo", CT.Money)],
                 Dialogs = [D("revisar", "Revisar presupuesto", "Revisar presupuesto", F("budget", "Nuevo presupuesto", FT.Number, req: true, min: 1),
                                 F("reason", "Motivo", FT.TextArea, req: true, max: 1000))],
-                Links = [L("Reportes", "REC-12"), L("Proyecto", "REC-05")],
+                Links = [L("Reportes", "REC-12"), L("Proyecto", "REC-05"), L("Historial de cambios", "AUD-01")],
             },
             M("REC-12", REC, "Reportes y evidencias", "Reconstruccion/Proyectos/{id:guid}/Reportes", Kind.Form, 'A',
               "POST P/adjuntos (multipart file/category); GET P/adjuntos/{attachmentId}; POST P/actividades/{activityId}/reportes") with
             {
+                Stage = 3,
+                Intro = "Cada actividad se resuelve con un reporte que incluye evidencias, costos, documentación y estado.",
                 SaveTo = "REC-12", CancelTo = "REC-05",
                 Fields = [F("activityId", "Actividad contractual", FT.Select, req: true, o: "Demolición|Cimentación|Estructura|Acabados|Entrega"),
                           F("status", "Estado reportado", FT.Select, req: true, o: "Pending|InProgress|Completed"),
                           F("actualCost", "Costo incremental", FT.Number, req: true, min: 0),
-                          F("evidence", "Fotografías (PNG o JPEG, máx. 20 MiB)", FT.File), F("documents", "Documento de soporte (PDF, máx. 20 MiB)", FT.File)],
+                          F("evidence", "Fotografías (PNG o JPEG, máx. 20 MiB)", FT.File, req: true),
+                          F("documents", "Documento de soporte (PDF, máx. 20 MiB)", FT.File, req: true)],
                 Tables = [T("Reportes registrados", null, C("activity", "Actividad", s: "Demolición|Cimentación|Estructura"), C("status", "Estado", CT.Badge, "Completed|InProgress|Pending"),
                             C("actualCost", "Costo", CT.Money), C("actor", "Registró", s: "j.pardo|m.torres"), C("registeredAt", "Fecha", CT.Date),
+                            C("completo", "Completo", CT.Badge, "Sí|No|Sí"),
                             C("adjuntos", "Adjuntos", s: "foto-12.jpg, acta.pdf|foto-07.jpg"))],
             },
             M("REC-13", REC, "Cierre y reporte final", "Reconstruccion/Proyectos/{id:guid}/Cierre", Kind.Detail, 'A', "GET P/monitoreo; POST P/cerrar {expectedVersion}; GET P/reporte-final") with
             {
+                Stage = 4,
                 Print = true,
-                Intro = "El botón Cerrar solo se habilita cuando el servidor indica canFinalize.",
-                Cols = [C("finalBudget", "Presupuesto final", CT.Money), C("totalExecuted", "Total ejecutado", CT.Money), C("remainingBudget", "Saldo", CT.Money),
+                Intro = "Revisa el avance, los gastos y los documentos antes de cerrar el proyecto.",
+                Cols = [C("finalBudget", "Presupuesto final", CT.Money, "$ 4.200 M"),
+                        C("totalExecuted", "Total ejecutado", CT.Money, "$ 1.890 M"), C("remainingBudget", "Saldo", CT.Money, "$ 2.310 M"),
+                        C("releasedBudget", "Presupuesto liberado", CT.Money, "$ 0"),
                         C("responsible", "Responsable", s: "Ing. Rojas"), C("contractor", "Contratista", s: "Constructora Andina"),
-                        C("fundingSource", "Financiación", s: "Presupuesto nacional"), C("totalActivities", "Actividades", s: "5"),
-                        C("totalReports", "Reportes", s: "5"), C("activitiesWithoutReports", "Sin reporte", s: "0"), C("canFinalize", "Puede cerrarse", CT.Badge, "Sí")],
+                        C("fundingSource", "Financiación", s: "Presupuesto nacional"), C("version", "Versión", CT.Number, "3"),
+                        C("totalActivities", "Actividades", s: "5"),
+                        C("totalReports", "Reportes", s: "3"), C("activitiesWithoutReports", "Sin reporte", s: "2"), C("canFinalize", "Puede cerrarse", CT.Badge, "No")],
                 Tables = [T("Estado de actividades", null, C("name", "Actividad", s: "Demolición|Cimentación|Estructura|Acabados|Entrega"),
-                            C("status", "Estado", CT.Badge, "Completed"), C("reportes", "Reportes", CT.Number), C("evidencias", "Evidencias", CT.Number))],
-                Dialogs = [D("cerrar", "Cerrar proyecto", "Cerrar proyecto")],
-                Links = [L("Proyecto", "REC-05")],
+                            C("status", "Estado", CT.Badge, "Completed|InProgress|Pending|Pending|Pending"),
+                            C("reportes", "Reportes", CT.Number, "1|1|1|0|0"), C("evidencias", "Evidencias", CT.Number, "2|1|1|0|0"))],
+                Dialogs = [D("cerrar", "Cerrar proyecto", "Cerrar proyecto") with
+                {
+                    ConfirmationText = "Al cerrar el proyecto se liberará el saldo restante. Completa primero todas las actividades y registra sus reportes."
+                }],
+                Links = [L("Proyecto", "REC-05"), L("Cronograma", "REC-08"), L("Reportes", "REC-12")],
+            },
+
+            M("REC-15", REC, "Seguimiento con la entidad", "Reconstruccion/Proyectos/{id:guid}/Seguimiento", Kind.Dashboard, 'N',
+              "N GET/POST P/solicitudes-seguimiento") with
+            {
+                Stage = 3,
+                Intro = "Solicita a la entidad evidencias, informe de costos, documentación y actualización de estado. El ciclo se repite hasta que complete sus tareas.",
+                Stats = [S("Actividades terminadas", "3 de 5"), S("Solicitudes abiertas", "2"), S("Avance", "60 %")],
+                TableTitle = "Solicitudes a la entidad",
+                Cols = [C("tipo", "Solicitud", s: "Evidencias|Informe de costos|Documentación|Actualización de estado"),
+                        C("activity", "Actividad", s: "Demolición|Cimentación|Estructura|Acabados|Entrega"),
+                        C("requestedAt", "Solicitada", CT.Date), C("status", "Estado", CT.Badge, "Pendiente|Recibida"),
+                        C("respondedAt", "Respuesta", CT.Date, "—|2026-11-18")],
+                Dialogs = [D("nueva", "Nueva solicitud", "Nueva solicitud",
+                    F("tipo", "Tipo de solicitud", FT.Select, req: true, o: "Evidencias|Informe de costos|Documentación|Actualización de estado"),
+                    F("activity", "Actividad", FT.Select, req: true, o: "Demolición|Cimentación|Estructura|Acabados|Entrega"),
+                    F("mensaje", "Mensaje", FT.TextArea))],
+                Links = [L("Reportes", "REC-12"), L("Cronograma", "REC-08"), L("Proyecto", "REC-05")],
+            },
+
+            M("REC-14", REC, "Entidades y presupuestos", "Reconstruccion/Proyectos/{id:guid}/Entidades", Kind.Dashboard, 'N',
+              "N GET/POST P/entidad-gubernamental; GET/POST P/presupuestos-entidades; POST P/presupuestos-entidades/{id}/seleccion") with
+            {
+                Stage = 2,
+                Intro = "Contacta a la entidad de la zona, recibe presupuestos de las entidades especializadas y elige el más adecuado.",
+                Stats = [S("Entidad de la zona", "Gobernación del Quindío"), S("Presupuestos recibidos", "3"), S("Presupuesto elegido", "$ 4.200 M")],
+                TableTitle = "Presupuestos recibidos",
+                Cols = [C("entity", "Entidad especializada", s: "Ingeniería Vial SAS|Consorcio Estructuras del Eje|Obras del Valle"),
+                        C("assetType", "Tipo de activo", s: "Puente|Escuela|Vivienda"), C("offered", "Presupuesto ofertado", CT.Money, "$ 4.200 M|$ 3.800 M|$ 5.100 M"),
+                        C("receivedAt", "Recibido", CT.Date), C("status", "Estado", CT.Badge, "Recibido|Seleccionado|Descartado")],
+                Tables = [T("Entidad gubernamental de la zona", null, C("entity", "Entidad", s: "Gobernación del Quindío"),
+                            C("contact", "Contacto", s: "Mónica Ramírez"), C("status", "Estado", CT.Badge, "Pendiente|Contactada|Respondió"),
+                            C("date", "Fecha", CT.Date))],
+                Dialogs =
+                [
+                    D("contactar", "Registrar contacto con la entidad", "Registrar contacto con la entidad",
+                        F("entity", "Entidad gubernamental", FT.Select, req: true, o: "Gobernación del Quindío|Alcaldía de Calarcá"),
+                        F("contact", "Contacto", req: true, max: 200), F("observations", "Observaciones", FT.TextArea, max: 1000)),
+                    D("solicitar", "Solicitar presupuesto", "Solicitar presupuesto",
+                        F("entity", "Entidad especializada", FT.Select, req: true,
+                            o: "Ingeniería Vial SAS|Consorcio Estructuras del Eje|Obras del Valle"),
+                        F("assetType", "Tipo de activo", FT.Select, req: true, o: "Puente|Escuela|Vivienda")),
+                    D("elegir", "Elegir presupuesto", "Elegir presupuesto",
+                        F("entity", "Entidad especializada", FT.Select, req: true,
+                            o: "Ingeniería Vial SAS|Consorcio Estructuras del Eje|Obras del Valle"),
+                        F("reason", "Motivo", FT.TextArea, req: true, max: 1000)),
+                ],
+                Links = [L("Datos del proyecto", "REC-06", true), L("Proyecto", "REC-05")],
+            },
+
+            // ===== 8. Gestión de recursos =====
+            M("RES-01", RES, "Resumen de recursos", "Recursos", Kind.Dashboard, 'E',
+              "E GET /api/recursos/resumen?disasterId={id}") with
+            {
+                Intro = "Disponibilidad consolidada de recursos y solicitudes pendientes de atender.",
+                Stats = [S("Recursos registrados", "486"), S("Disponibles", "312"), S("Asignados", "151"), S("Solicitudes pendientes", "14")],
+                Chart = true, ChartTitle = "Disponibilidad por categoría",
+                TableTitle = "Solicitudes pendientes",
+                Cols = solicitudesRecursosCols,
+                Links =
+                [
+                    L("Solicitar recurso", "RES-04", true), L("Inventario", "RES-02"),
+                    L("Solicitudes y asignaciones", "RES-05"), L("Donaciones", "RES-06"), L("Refugios", "PEO-07"),
+                ],
+            },
+            M("RES-02", RES, "Inventario de recursos", "Recursos/Inventario", Kind.List, 'E',
+              "E GET/POST /api/recursos?disasterId={id}") with
+            {
+                Cols =
+                [
+                    C("nombre", "Recurso", s: "Agua potable embotellada|Kit de alimentos|Antibiótico genérico|Camión cisterna|Retroexcavadora|Equipo de rescate USAR|Brigadista|Carpa familiar"),
+                    C("categoria", "Categoría", s: categoriasRecursos), C("disponible", "Disponible", CT.Number),
+                    C("unidad", "Unidad", s: unidadesRecursos),
+                    C("ubicacion", "Ubicación", s: "Bodega Armenia|Bodega Cali|Hospital San Juan de Dios|Base Bomberos Manizales"),
+                    C("organizacion", "Propietario", s: orgs), C("estado", "Estado", CT.Badge, estadosRecursos),
+                    C("actualizado", "Actualizado", CT.Date),
+                ],
+                RowTo = "RES-03",
+                Filters =
+                [
+                    F("categoria", "Categoría", o: categoriasRecursos), F("estado", "Estado", o: estadosRecursos),
+                    F("ubicacion", "Ubicación", o: "Bodega Armenia|Bodega Cali|Hospital San Juan de Dios|Base Bomberos Manizales"),
+                ],
+                Dialogs =
+                [
+                    D("crear", "Registrar recurso", "Registrar recurso",
+                      F("nombre", "Nombre", req: true), F("categoria", "Categoría", FT.Select, req: true, o: categoriasRecursos),
+                      F("cantidad", "Cantidad", FT.Number, req: true, min: 0), F("unidad", "Unidad", FT.Select, req: true, o: unidadesRecursos),
+                      F("ubicacion", "Ubicación", req: true),
+                      F("organizacion", "Organización propietaria", FT.Select, o: orgs),
+                      F("observaciones", "Observaciones", FT.TextArea)),
+                ],
+                Links = [L("Solicitar recurso", "RES-04", true)],
+            },
+            M("RES-03", RES, "Detalle de recurso", "Recursos/Inventario/{id:guid}", Kind.Detail, 'E',
+              "E GET /api/recursos/{id}; PUT /api/recursos/{id}/ajuste") with
+            {
+                Cols =
+                [
+                    C("nombre", "Recurso", s: "Agua potable embotellada"), C("categoria", "Categoría", s: "Agua"),
+                    C("disponible", "Disponible", CT.Number), C("unidad", "Unidad", s: "litros"),
+                    C("ubicacion", "Ubicación", s: "Bodega Armenia"), C("organizacion", "Propietario", s: "Defensa Civil"),
+                    C("estado", "Estado", CT.Badge, "Disponible"), C("actualizado", "Actualizado", CT.Date),
+                    C("observaciones", "Observaciones", s: "Reserva para atención de emergencia"),
+                ],
+                Tables =
+                [
+                    T("Asignaciones", null, C("solicitud", "Solicitud", s: "SOL-0101|SOL-0102"),
+                      C("solicitante", "Solicitante", s: orgs), C("cantidad", "Cantidad", CT.Number),
+                      C("fecha", "Fecha", CT.Date), C("estado", "Estado", CT.Badge, "Asignado|Entregado")),
+                    T("Movimientos", null, C("fecha", "Fecha", CT.Date),
+                      C("tipo", "Tipo", s: "Ingreso|Salida|Ajuste"), C("cantidad", "Cantidad", CT.Number),
+                      C("usuario", "Usuario", s: "j.pardo|m.torres|a.vargas")),
+                ],
+                Dialogs =
+                [
+                    D("ajustar", "Ajustar existencias", "Ajustar existencias",
+                      F("cantidad", "Cantidad", FT.Number, req: true, min: 0),
+                      F("motivo", "Motivo", FT.TextArea, req: true)),
+                ],
+            },
+            M("RES-04", RES, "Solicitud de recursos", "Recursos/Solicitudes/Crear", Kind.Form, 'N',
+              "N POST /api/recursos/solicitudes con Idempotency-Key") with
+            {
+                Intro = "Los organismos autorizados solicitan recursos para atender un desastre.",
+                SaveTo = "RES-05", CancelTo = "RES-05",
+                Fields =
+                [
+                    F("disasterId", "Desastre", FT.Select, req: true, o: desastres),
+                    F("organizationId", "Organismo solicitante", FT.Select, req: true, o: orgs),
+                    F("categoria", "Categoría", FT.Select, req: true, o: categoriasRecursos),
+                    F("recurso", "Recurso o descripción", req: true, max: 200),
+                    F("cantidad", "Cantidad", FT.Number, req: true, min: 1),
+                    F("unidad", "Unidad", FT.Select, req: true, o: unidadesRecursos),
+                    F("prioridad", "Prioridad", FT.Select, req: true, o: prios),
+                    F("requeridoPara", "Fecha requerida", FT.DateTime, req: true),
+                    F("entrega", "Lugar de entrega", req: true, max: 200),
+                    F("justificacion", "Justificación", FT.TextArea, req: true, max: 1000),
+                ],
+            },
+            M("RES-05", RES, "Solicitudes y asignaciones", "Recursos/Solicitudes", Kind.List, 'N',
+              "N GET /api/recursos/solicitudes; PUT /api/recursos/solicitudes/{id}/asignacion") with
+            {
+                Cols = solicitudesRecursosCols,
+                Filters = [F("prioridad", "Prioridad", o: prios), F("estado", "Estado", o: "Pendiente|Aprobada|Asignada|Entregada|Rechazada")],
+                Dialogs =
+                [
+                    D("asignar", "Asignar recurso", "Asignar recurso",
+                      F("codigo", "Código de solicitud", req: true), F("recurso", "Recurso", req: true),
+                      F("cantidad", "Cantidad", FT.Number, req: true, min: 1),
+                      F("origen", "Bodega de origen", FT.Select, req: true, o: bodegas),
+                      F("observaciones", "Observaciones", FT.TextArea)),
+                    D("rechazar", "Rechazar solicitud", "Rechazar solicitud",
+                      F("codigo", "Código de solicitud", req: true),
+                      F("motivo", "Motivo", FT.TextArea, req: true, max: 1000)),
+                ],
+                Links = [L("Nueva solicitud", "RES-04", true), L("Inventario", "RES-02")],
+            },
+            M("RES-06", RES, "Donaciones", "Recursos/Donaciones", Kind.List, 'E',
+              "E GET/POST /api/recursos/donaciones") with
+            {
+                Optional = true,
+                Cols =
+                [
+                    C("donante", "Donante", s: "Fundación Éxito|Cámara de Comercio|Ciudadano anónimo"),
+                    C("tipo", "Tipo", CT.Badge, "Dinero|Alimentos|Medicamentos|Equipos"),
+                    C("descripcion", "Descripción", s: "Alimentos no perecederos|Aporte para kits familiares|Equipos de protección"),
+                    C("cantidad", "Cantidad", CT.Number), C("receptor", "Receptor", s: orgs), C("fecha", "Fecha", CT.Date),
+                    C("estado", "Estado", CT.Badge, "Recibida|En verificación|Distribuida"),
+                ],
+                Dialogs =
+                [
+                    D("registrar", "Registrar donación", "Registrar donación",
+                      F("donante", "Donante", req: true), F("tipo", "Tipo", FT.Select, req: true, o: "Dinero|Alimentos|Medicamentos|Equipos"),
+                      F("descripcion", "Descripción", req: true), F("cantidad", "Cantidad", FT.Number, req: true, min: 1),
+                      F("receptor", "Organización receptora", FT.Select, req: true, o: orgs)),
+                ],
+            },
+
+            // ===== 9. Administración de tipos =====
+            M("ADM-01", ADM, "Tipos de desastre y niveles de atención", "Administracion", Kind.List, 'N',
+              "N GET/POST /api/administracion/tipos-desastre; GET/PUT /api/administracion/niveles-atencion") with
+            {
+                Intro = "Los tipos y niveles se configuran aquí, sin cambiar el código.",
+                TableTitle = "Tipos de desastre",
+                Cols =
+                [
+                    C("tipo", "Tipo de desastre", s: "Terremoto|Inundación|Incendio|Deslizamiento|Huracán|Erupción volcánica"),
+                    C("descripcion", "Descripción", s: "Movimiento del terreno|Desbordamiento de ríos|Fuego no controlado"),
+                    C("activo", "Estado", CT.Badge, "Activo|Activo|Inactivo"),
+                ],
+                Filters = [F("activo", "Estado", o: "Activo|Inactivo")],
+                Tables =
+                [
+                    T("Niveles de atención", null,
+                      C("nivel", "Nivel", s: nivelesAtencion),
+                      C("criterio", "Criterio", s: "Recursos locales|Coordinación entre organismos|Recursos regionales o nacionales|Coordinación nacional e internacional")),
+                ],
+                Dialogs =
+                [
+                    D("crear", "Nuevo tipo de desastre", "Nuevo tipo de desastre",
+                      F("nombre", "Nombre", req: true), F("descripcion", "Descripción", FT.TextArea)),
+                    D("desactivar", "Desactivar tipo", "Desactivar tipo",
+                      F("nombre", "Tipo de desastre", req: true)),
+                ],
+            },
+            M("ADM-02", ADM, "Tipos de activo y categorías de daño", "Administracion/Activos", Kind.List, 'N',
+              "N GET/POST /api/administracion/tipos-activo; GET/POST /api/administracion/categorias-dano") with
+            {
+                Intro = "Administra los tipos de bienes y las categorías usadas para evaluar sus daños.",
+                TableTitle = "Tipos de activo",
+                Cols =
+                [
+                    C("tipo", "Tipo de activo", s: "Vivienda|Hospital|Escuela|Puente|Carretera|Red eléctrica"),
+                    C("criterios", "Criterios de evaluación", s: "Estructura, habitabilidad|Capacidad, servicios|Estado de la superficie"),
+                    C("activo", "Estado", CT.Badge, "Activo|Activo|Inactivo"),
+                ],
+                Tables =
+                [
+                    T("Categorías de daño", null,
+                      C("categoria", "Categoría", s: "Sin daño|Daño leve|Daño moderado|Daño grave|Destrucción total"),
+                      C("descripcion", "Descripción", s: "Sin afectación visible|Daño reparable|Daño estructural grave"),
+                      C("aplicaA", "Aplica a", s: "Todos los activos|Edificaciones|Vías e infraestructura")),
+                ],
+                Dialogs =
+                [
+                    D("tipo", "Nuevo tipo de activo", "Nuevo tipo de activo",
+                      F("nombre", "Tipo de activo", req: true), F("criterios", "Criterios", FT.TextArea)),
+                    D("categoria", "Nueva categoría de daño", "Nueva categoría de daño",
+                      F("nombre", "Categoría", req: true), F("descripcion", "Descripción", FT.TextArea),
+                      F("aplicaA", "Aplica a", req: true)),
+                ],
+            },
+            M("ADM-03", ADM, "Usuarios y roles", "Administracion/Usuarios", Kind.List, 'N',
+              "N GET /api/administracion/usuarios; PUT /api/administracion/usuarios/{id}/rol; PUT .../{id}/estado") with
+            {
+                Intro = "El acceso se controla por rol y por organización.",
+                Cols =
+                [
+                    C("usuario", "Usuario", s: "j.pardo|m.torres|a.vargas"),
+                    C("nombre", "Nombre", s: "Juan Pardo|Marta Torres|Ana Vargas"),
+                    C("organizacion", "Organización", s: orgs),
+                    C("rol", "Rol", s: "Administrador|Coordinador|Evaluador de campo|Consulta"),
+                    C("estado", "Estado", CT.Badge, "Activo|Activo|Suspendido"),
+                    C("ultimoAcceso", "Último acceso", CT.Date),
+                ],
+                Filters = [F("rol", "Rol", o: "Administrador|Coordinador|Evaluador de campo|Consulta"),
+                           F("estado", "Estado", o: "Activo|Suspendido")],
+                Dialogs =
+                [
+                    D("rol", "Cambiar rol", "Cambiar rol",
+                      F("usuario", "Usuario", req: true),
+                      F("rol", "Rol", FT.Select, req: true, o: "Administrador|Coordinador|Evaluador de campo|Consulta")),
+                    D("estado", "Suspender usuario", "Suspender usuario",
+                      F("usuario", "Usuario", req: true), F("motivo", "Motivo", FT.TextArea, req: true)),
+                ],
+            },
+            M("AUD-01", AUD, "Auditoría y trazabilidad", "Auditoria", Kind.List, 'N',
+              "N GET /api/auditoria?entidad=&usuario=&desde=&hasta=") with
+            {
+                Intro = "Quién hizo qué, cuándo, sobre qué información y con qué resultado.",
+                Print = true,
+                Cols =
+                [
+                    C("occurredAt", "Fecha y hora", CT.Date), C("usuario", "Usuario", s: "j.pardo|m.torres|a.vargas"),
+                    C("organizacion", "Organización", s: orgs),
+                    C("accion", "Acción", s: "Cambió nivel de atención|Asignó recurso|Modificó presupuesto|Actualizó persona afectada|Cambió estado del proyecto"),
+                    C("entidad", "Entidad", s: "Desastre|Recurso|Presupuesto|Persona afectada|Proyecto"),
+                    C("referencia", "Sobre qué", s: "DIS-0001|SOL-0101|PRY-0007"),
+                    C("resultado", "Resultado", CT.Badge, "Exitoso|Rechazado|Error"),
+                ],
+                Filters =
+                [
+                    F("entidad", "Entidad", o: "Desastre|Recurso|Presupuesto|Persona afectada|Proyecto"),
+                    F("resultado", "Resultado", o: "Exitoso|Rechazado|Error"),
+                    F("organizacion", "Organización", o: orgs),
+                ],
+            },
+            M("INT-01", INT, "Estado de integraciones", "Integraciones", Kind.Dashboard, 'N',
+              "N GET /api/integraciones/estado; POST /api/integraciones/{id}/reintento") with
+            {
+                Intro = "Disponibilidad de los sistemas externos y mensajes pendientes de sincronizar.",
+                Stats =
+                [
+                    S("Sistemas conectados", "7"), S("Disponibles", "5"),
+                    S("Degradados o caídos", "2"), S("Mensajes en cola", "38"),
+                ],
+                TableTitle = "Estado de los sistemas",
+                Cols =
+                [
+                    C("sistema", "Sistema", s: "Alertas y monitoreo|Sistema GIS|Sistema hospitalario|Gestión de recursos|Personas afectadas (Eden)|Financiero|Notificaciones"),
+                    C("tipo", "Mecanismo", s: "REST|Eventos|Webhook|Mensajería"),
+                    C("estado", "Estado", CT.Badge, "Disponible|Degradado|No disponible"),
+                    C("circuito", "Circuito", CT.Badge, "Normal|En corte|Prueba"),
+                    C("ultimo", "Último intento", CT.Date), C("cola", "En cola", CT.Number),
+                ],
+                Tables =
+                [
+                    T("Pendientes de sincronizar", null,
+                      C("operacion", "Operación", s: "Actualizar desastre|Registrar evaluación|Asignar recurso"),
+                      C("sistema", "Sistema", s: "Sistema GIS|Sistema hospitalario|Gestión de recursos"),
+                      C("creada", "Creada", CT.Date), C("intentos", "Intentos", CT.Number),
+                      C("estado", "Estado", CT.Badge, "Pendiente|Reintentando|Fallida")),
+                ],
+                Dialogs =
+                [
+                    D("reintentar", "Reintentar envío", "Reintentar envío",
+                      F("sistema", "Sistema", FT.Select, req: true,
+                        o: "Alertas y monitoreo|Sistema GIS|Sistema hospitalario|Gestión de recursos|Personas afectadas|Financiero|Notificaciones")),
+                ],
             },
         };
     }

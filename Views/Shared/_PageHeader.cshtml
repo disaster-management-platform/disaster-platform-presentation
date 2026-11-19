@@ -1,0 +1,20 @@
+@model PantallaVm
+@{
+    var s = Model.Screen;
+}
+<div class="mb-3">
+    @if (Model.Parent is { } parent)
+    {
+        <a class="btn btn-sm btn-outline-secondary mb-2 no-print" href="@Catalog.Url(parent.Id, Model.RouteId)">← Volver a @parent.Title</a>
+    }
+    <div class="text-muted small">
+        @s.Module
+        @if (s.Optional) { <span class="badge text-bg-light border ms-1">Opcional</span> }
+    </div>
+    <h1 class="h2 fw-semibold mb-1">@s.Title</h1>
+    @if (!string.IsNullOrWhiteSpace(s.Intro))
+    {
+        <p class="text-muted mb-0">@s.Intro</p>
+    }
+    @if (Model.RouteId is not null) { <div class="small text-muted">Contexto: @Model.RouteId</div> }
+</div>

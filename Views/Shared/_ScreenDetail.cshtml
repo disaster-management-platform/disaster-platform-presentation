@@ -2,29 +2,47 @@
 @{
     var s = Model.Screen;
 }
-<div class="row g-3 mb-4">
-    <div class="@(s.Map ? "col-lg-7" : "col-12")">
-        <div class="card h-100">
-            <div class="card-header fw-semibold">Ficha</div>
-            <dl class="row p-3 mb-0">
-                @foreach (var c in s.Cols)
-                {
-                    var v = Model.Detalle?.GetValueOrDefault(c.Key) ?? Mock.Cell(c, 0);
-                    <dt class="col-sm-4 text-muted">@c.Label</dt>
-                    <dd class="col-sm-8">
-                        @if (c.Type == CT.Badge) { <span class="@Mock.Badge(v)">@v</span> } else { @v }
-                    </dd>
-                }
-            </dl>
-        </div>
-    </div>
+<div class="row g-3 mb-4 align-items-start">
     @if (s.Map)
     {
-        <div class="col-lg-5">
-            <div class="card h-100">
+        <div class="col-lg-6">
+            <div class="card">
                 <div class="card-header fw-semibold">Ubicación</div>
                 <div id="map" class="map" data-points="@Mock.PointsJson(true)"></div>
             </div>
         </div>
     }
+    <div class="@(s.Map ? "col-lg-6" : "col-12")">
+        @if (s.Map)
+        {
+            @for (var i = 0; i < s.Tables.Length; i++)
+            {
+                var table = s.Tables[i];
+                @await Html.PartialAsync("_Table", new TableVm(table.Title, table.Cols, table.RowTo, Array.Empty<Field>(), false)
+                {
+                    Rows = Model.FilasSub.GetValueOrDefault(i)
+                })
+            }
+        }
+        <div class="card @(s.Map ? "mb-4" : "h-100")">
+            <div class="card-header fw-semibold">Ficha</div>
+            <dl class="row p-3 mb-0">
+                @foreach (var c in s.Cols)
+                {
+                    var v = Model.Detalle?.GetValueOrDefault(c.Key);
+                    if (s.Id == "REC-03" && c.Key == "resultado" && string.IsNullOrWhiteSpace(v))
+                    {
+                        var priority = Model.Detalle?.GetValueOrDefault("priority")
+                            ?? Mock.Cell(s.Cols.First(column => column.Key == "priority"), 0);
+                        v = Mock.Resultado(priority);
+                    }
+                    v ??= Mock.Cell(c, 0);
+                    <dt class="col-sm-4 text-muted">@c.Label</dt>
+                    <dd class="col-sm-8">
+                        @if (c.Type == CT.Badge) { <span class="@Mock.Badge(v)">@Etiquetas.Es(v)</span> } else { @Etiquetas.Es(v) }
+                    </dd>
+                }
+            </dl>
+        </div>
+    </div>
 </div>
