@@ -89,7 +89,12 @@ else
         @for (var i = 0; i < s.Tables.Length; i++)
         {
             var t = s.Tables[i];
+            @if (Model.SecondaryErrors.TryGetValue(i, out var error))
+            { <div class="alert alert-warning" role="alert">@t.Title: @error</div> }
+            else
+            {
             @await Html.PartialAsync("_Table", new TableVm(t.Title, t.Cols, t.RowTo, Array.Empty<Field>(), false) { Rows = Model.FilasSub.GetValueOrDefault(i) })
+            }
         }
     }
     @if (s.Map && Model.Simulado)

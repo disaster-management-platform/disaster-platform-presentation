@@ -18,10 +18,15 @@
             @for (var i = 0; i < s.Tables.Length; i++)
             {
                 var table = s.Tables[i];
+                @if (Model.SecondaryErrors.TryGetValue(i, out var error))
+                { <div class="alert alert-warning" role="alert">@table.Title: @error</div> }
+                else
+                {
                 @await Html.PartialAsync("_Table", new TableVm(table.Title, table.Cols, table.RowTo, Array.Empty<Field>(), false)
                 {
                     Rows = Model.FilasSub.GetValueOrDefault(i)
                 })
+                }
             }
         }
         <div class="card @(s.Map ? "mb-4" : "h-100")">

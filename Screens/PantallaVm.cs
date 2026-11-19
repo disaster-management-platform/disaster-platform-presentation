@@ -25,6 +25,7 @@ public class PantallaVm
 
     // Datos que entrega el cliente (null = sin datos, la vista usa los de ejemplo)
     public IReadOnlyList<Row>? Filas { get; set; }
+    public Dictionary<int, string> SecondaryErrors { get; } = new();
     public Dictionary<int, IReadOnlyList<Row>> FilasSub { get; } = new();
     public IReadOnlyDictionary<string, string>? Detalle { get; set; }
 }

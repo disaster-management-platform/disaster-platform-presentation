@@ -41,14 +41,21 @@ public abstract class PantallaController(IPantallaClient api) : Controller
                     .ThenBy(row => RangoDanio(Celda(row, s, "damage")))
                     .ThenBy(row => Celda(row, s, "damage"), StringComparer.OrdinalIgnoreCase)
                     .ToArray();
-            for (var i = 0; i < s.Tables.Length; i++)
-                vm.FilasSub[i] = await api.FilasAsync(s, s.Tables[i].Cols, s.Tables[i].RowTo, id, i, ct) ?? [];
             if (id is not null && s.Id != "ORG-08" || s.Kind == Kind.Detail)
             {
                 vm.Detalle = await api.DetalleAsync(s, id, ct);
                 if (vm.Detalle is not null)
                     foreach (var (name, value) in vm.Detalle) vm.Values.TryAdd(name, value);
                 if (vm.Detalle?.GetValueOrDefault("version") is { } version) vm.Values.TryAdd("expectedVersion", version);
+            }
+            for (var i = 0; i < s.Tables.Length; i++)
+            {
+                try { vm.FilasSub[i] = await api.FilasAsync(s, s.Tables[i].Cols, s.Tables[i].RowTo, id, i, ct) ?? []; }
+                catch (Exception error) when (error is HttpRequestException or TaskCanceledException)
+                {
+                    vm.FilasSub[i] = [];
+                    vm.SecondaryErrors[i] = Mensaje(error);
+                }
             }
             if (s.Stage == 3 && id is not null)
             {
@@ -66,7 +73,7 @@ public abstract class PantallaController(IPantallaClient api) : Controller
         {
             var status = vm.Detalle?.GetValueOrDefault("status") ?? "";
             vm.ProjectStatus = status;
-            vm.Screen = s with { Stage = Etapa(status) };
+            vm.Screen = vm.Screen with { Stage = Etapa(status) };
         }
         else if (s.Stage == 3 && api.Simulado && vm.ProjectStatus is null)
             vm.ProjectStatus = "Monitoring";

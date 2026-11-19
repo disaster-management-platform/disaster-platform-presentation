@@ -69,12 +69,12 @@ The seven demo users are stored in `~/.config/disaster-management-platform/demo-
 | User | Minimum existing domain roles |
 | --- | --- |
 | `demo.admin` | disasters.admin, reconstruction.write, damage.admin, org.admin, org.create, people.write, coordination.write |
-| `demo.coordinador` | org.read, coordination.write, reconstruction.read |
-| `demo.evaluador` | damage.write |
-| `demo.validador` | damage.admin (required by the existing validation contract) |
-| `demo.humanitario` | people.write, org.read |
-| `demo.reconstructor` | reconstruction.write |
-| `demo.consulta` | reconstruction.read, people.read, coordination.read, org.read |
+| `demo.coordinador` | disasters.read, org.read, coordination.write, reconstruction.read |
+| `demo.evaluador` | disasters.read, damage.write |
+| `demo.validador` | disasters.read, damage.admin (required by the existing validation contract) |
+| `demo.humanitario` | disasters.read, people.write, org.read |
+| `demo.reconstructor` | disasters.read, reconstruction.write |
+| `demo.consulta` | disasters.read, reconstruction.read, people.read, coordination.read, org.read |
 
 No realm-administrator or infrastructure roles are assigned to these accounts. Existing write roles also authorize the corresponding reads where the service policy specifies that. Do not expand roles merely to make every navigation link succeed.
 
@@ -108,8 +108,10 @@ Stop Razor with Ctrl-C. `python3 disaster-platform-presentation/scripts/run_loca
 
 Family creation uses Eden's native DVR family workflow, with a realm-scoped `dvr/group_membership` permission; the platform template checks the viewed person and submitted member before native processing. Existing native people/resources identities remain in protected `~/.config/disaster-management-platform/eden-platform-test.json`, `eden-zip-coordination-test.json` and `eden-platform-resources-test.json`; they are not administrative runtime accounts. Obtain authorized native access from the environment administrator rather than reusing an admin account.
 
-The connected MVC lifecycle, real Storage uploads/downloads, version conflicts and foreign-identity denial were checked through HTTP. A visual browser check remains pending when no browser is exposed by the execution environment. Historical anonymous Disaster API access and authorized rotation of the previously exposed administrative Storage key remain security debt; keep this setup local. The existing local profiles leave messaging workers disabled; this guide does not claim a running cross-domain message-delivery scenario or production readiness.
+The connected MVC lifecycle, real Storage uploads/downloads, version conflicts and foreign-identity denial were checked through HTTP. A visual browser check remains pending when no browser is exposed by the execution environment. Disaster registration/list/detail/Delta and mutations now require domain-specific roles and organization/resource scope. Authorized rotation of the previously exposed administrative Storage key remains pending; keep this setup local. The existing local profiles leave messaging workers disabled; this guide does not claim a running cross-domain message-delivery scenario or production readiness.
 
 Disasters is the landing page. Registration captures the device location over HTTPS with user permission, previews the point, and resolves its municipality/city through the [client-side BigDataCloud reverse-geocoding API](https://www.bigdatacloud.com/docs/free-api/free-reverse-geocode-to-city-api) (`Api__ReverseGeocodingUrl`, HTTPS, externally configurable). Only a fresh device location is sent; no IP-location fallback or platform token is used. If the external lookup fails, coordinates remain and the user supplies the municipality/city. The external provider's fair-use conditions apply; it is not an availability guarantee.
 
 Matching type, municipality/city and a start time within ±72 hours produces suggestions. The user explicitly chooses an existing disaster or a new one. Association preserves the original report and stable UUID, checks the selected version, and derives the area from known report points. Two points or collinear points use the original point as circle center and the farthest point for its radius; a non-collinear hull uses its centroid and maximum geographic distance. One distinct point retains an unknown radius. Check the detected location before saving; GPS accuracy does not define the affected radius.
+
+Disaster creation persists trusted organization and creator metadata atomically in the original snapshot. Organization administrators and authorized creators can open their new records without editing JWT disaster grants; other users remain scoped. Technical service readers have organization-limited read permission, not administration. Existing unowned records need verified reconciliation rather than automatic adoption. ID 10 was reconciled to organization 3 with an audit entry; its original content/snapshot was preserved. Razor loads the authorized detail before secondary tables and displays an isolated warning if history cannot load. Sign in again after user role changes; the seven demo passwords remain `testing`.
