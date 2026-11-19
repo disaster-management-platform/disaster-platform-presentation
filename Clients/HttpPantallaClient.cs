@@ -10,7 +10,7 @@ namespace disaster_platform_web.Clients;
 public abstract class HttpPantallaClient(HttpClient http) : IPantallaClient
 {
     protected HttpClient Http => http;
-    protected IReadOnlyDictionary<string, string?> Query { get; private set; } = new Dictionary<string, string?>();
+    protected IReadOnlyDictionary<string, string?> Query { get; set; } = new Dictionary<string, string?>();
     protected PantallaVm View { get; private set; } = default!;
     public bool Simulado => false;
     protected static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);

@@ -12,6 +12,11 @@ public class ReconstruccionClient(HttpClient http) : HttpPantallaClient(http), I
     public override async Task PrepararAsync(PantallaVm vm,IReadOnlyDictionary<string,string?> query,CancellationToken ct)
     {
         await base.PrepararAsync(vm,query,ct);vm.Screen=vm.Screen with{Api="Reconstrucción — contratos publicados",State='A'};
+        if (string.IsNullOrWhiteSpace(query.GetValueOrDefault("disasterId")) && vm.Disasters.OrderBy(disaster => int.Parse(disaster.Value)).FirstOrDefault() is { } selected)
+        {
+            Query = new Dictionary<string,string?>(query) { ["disasterId"] = selected.Value };
+            vm.Values["disasterId"] = selected.Value;
+        }
         if(vm.RouteId!=null&&vm.Screen.Id is not "REC-03") {
             project=await Get(Root+"proyectos/"+vm.RouteId,ct);vm.ProjectStatus=Text(project,"status");
             foreach(var entry in project!.AsObject())vm.Values.TryAdd(entry.Key,entry.Value?.ToString());

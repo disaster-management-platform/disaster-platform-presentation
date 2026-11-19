@@ -39,7 +39,7 @@ else
         <form method="get" class="mb-3 d-flex gap-2">
             <select name="disasterId" class="form-select" aria-label="Desastre">
                 <option value="">Selecciona un desastre</option>
-                @foreach (var disaster in Model.Disasters) { <option value="@disaster.Value" selected="@(disaster.Value == Context.Request.Query["disasterId"])">@disaster.Label</option> }
+                @foreach (var disaster in Model.Disasters) { <option value="@disaster.Value" selected="@(disaster.Value == Model.Values.GetValueOrDefault("disasterId"))">@disaster.Label</option> }
             </select><button class="btn btn-outline-primary">Consultar</button>
         </form>
     }
