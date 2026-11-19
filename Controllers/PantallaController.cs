@@ -190,13 +190,20 @@ public abstract class PantallaController(IPantallaClient api) : Controller
         if (d is null) return NotFound();
         if (sid == "REC-02" && dialog == "proyectos")
             return await CrearProyectos(s, id, values);
-        if (sid == "REC-13" && dialog == "cerrar")
+        if ((sid == "REC-13" && dialog == "cerrar") || sid == "ORG-08")
         {
-            if (!int.TryParse(values.GetValueOrDefault("expectedVersion"), out var expectedVersion) || expectedVersion <= 0)
+            var versionError = sid == "REC-13"
+                ? "No se pudo determinar la versión actual del proyecto."
+                : "No se pudo determinar la versión actual de la tarea.";
+            if (!int.TryParse(values.GetValueOrDefault("expectedVersion"), NumberStyles.Integer,
+                    CultureInfo.InvariantCulture, out var expectedVersion) || expectedVersion <= 0)
             {
-                TempData["Err"] = "No se pudo determinar la versión actual del proyecto.";
+                TempData["Err"] = versionError;
                 return Redirect(Catalog.Url(sid, id));
             }
+        }
+        if (sid == "REC-13" && dialog == "cerrar")
+        {
             try
             {
                 var detail = await api.DetalleAsync(s, id, HttpContext.RequestAborted);

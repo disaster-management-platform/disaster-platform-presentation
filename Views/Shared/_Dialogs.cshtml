@@ -3,13 +3,18 @@
 {
     var isBulkProjects = Model.Screen.Id == "REC-02" && d.Id == "proyectos";
     var isBlockedClose = Model.Screen.Id == "REC-13" && d.Id == "cerrar" && !Model.CanFinalize;
+    var hasVersion = Model.Screen.Cols.Any(c => c.Key == "version");
+    var sendsExpectedVersion = Model.Screen.Id == "REC-13" && d.Id == "cerrar"
+        || Model.Screen.Id == "ORG-08" && hasVersion;
+    var multipart = d.Fields.Any(f => f.Type == FT.File);
     <div class="modal fade" id="dlg-@d.Id" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form method="post" action="@(Context.Request.Path.Value!.TrimEnd('/'))/Accion/@d.Id" novalidate>
+                <form method="post" enctype="@(multipart ? "multipart/form-data" : "application/x-www-form-urlencoded")"
+                      action="@(Context.Request.Path.Value!.TrimEnd('/'))/Accion/@d.Id" novalidate>
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="Key" value="@Guid.NewGuid()" />
-                    @if (Model.Screen.Id == "REC-13" && d.Id == "cerrar")
+                    @if (sendsExpectedVersion)
                     {
                         var version = Model.Detalle?.GetValueOrDefault("version")
                             ?? Mock.Cell(Model.Screen.Cols.Single(c => c.Key == "version"), 0);
