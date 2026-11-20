@@ -1,0 +1,13 @@
+**/bin
+**/obj
+.git
+.vs
+.vscode
+scripts
+*.env
+appsettings.Local.json
+*.pfx
+*.key
+*.pem
+*.log
+dotnet-sdk*.tar.gz
